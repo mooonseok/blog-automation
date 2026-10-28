@@ -3,7 +3,7 @@ description: 유튜브 링크로 블로그 글 초안을 만든다 (수집 → �
 argument-hint: <유튜브 URL> [추가 요청]
 ---
 
-유튜브 링크로 moonesok.tistory.com `AI` 카테고리에 올릴 글 초안을 만든다.
+유튜브 링크로 블로그 글 초안을 만든다.
 
 입력: $ARGUMENTS
 (첫 번째 값이 URL, 나머지는 이번 글에 대한 추가 요청이다. 추가 요청은 blog-style보다 우선한다.)

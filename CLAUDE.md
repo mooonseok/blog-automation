@@ -1,6 +1,6 @@
 # blog-automation
 
-유튜브 링크를 받아 moonesok.tistory.com `AI` 카테고리에 올릴 블로그 글을 만드는 프로젝트.
+유튜브 링크를 받아 블로그 글을 만드는 프로젝트.
 
 ## 파이프라인
 
