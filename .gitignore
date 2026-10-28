@@ -5,3 +5,6 @@ __pycache__/
 
 # 글은 posts/ 안의 별도 로컬 저장소에서 관리 (GitHub에 올리지 않음)
 posts/
+
+# 이미지 생성 결과물 (블로그용 자료라 GitHub에 올리지 않음)
+output/
