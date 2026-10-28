@@ -128,4 +128,4 @@ if [ -s "$dir/images.md" ]; then echo "이미지 필요: $dir/images.md 의 프�
 echo "다음 할 일"
 echo "  1. 미리보기·수정: $dir/post.md"
 echo "  2. 복사: sh copy-post"
-echo "  3. 티스토리 글쓰기 → HTML 모드에 붙여넣기 → 이미지 자리 교체 → 카테고리 AI → 비공개 저장 후 확인"
+echo "  3. 티스토리 글쓰기 → 붙여넣기(기본모드·HTML 모드 모두 가능) → 이미지 자리 교체 → 카테고리 AI → 비공개 저장 후 확인"
