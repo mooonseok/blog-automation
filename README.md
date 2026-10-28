@@ -218,6 +218,13 @@ copy-post                    클립보드 복사 + 버전 기록
 CLAUDE.md                    Claude가 따르는 프로젝트 규칙
 ```
 
+## Codex에서 쓰기
+
+이 리포는 Codex에서도 쓸 수 있습니다. Codex는 `AGENTS.md`(공통 지침)를 자동으로 읽고, `.agents/skills/`의 스킬을 씁니다.
+
+- 글 만들기: `$write-post <유튜브 링크>` (CLI에서 `/skills`로 목록 확인)
+- 처음 옮겨 왔다면 첫 메시지로 "HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘"를 보내세요. 지금까지의 결정과 다음 작업이 정리돼 있습니다.
+
 ## 로드맵
 
 - [x] 1단계: 자막 수집, `/write` (분석 → 작성 → 교정), 문체 스킬 초기 버전, `copy-post` 버전 관리

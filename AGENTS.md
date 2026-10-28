@@ -1,0 +1,64 @@
+# blog-automation
+
+유튜브 링크를 받아 블로그 글(티스토리)을 만드는 프로젝트. Codex와 Claude Code가 함께 읽는 공통 지침이다.
+처음 이 리포를 여는 에이전트는 `HANDOFF.md`를 먼저 읽는다. 지금까지의 결정과 다음 작업이 정리돼 있다.
+
+## 사용자 선호 (항상 지킨다)
+
+- 사용자에게 하는 모든 답변은 **한국어**로 쓴다.
+- 사용자가 읽는 문서(README 등)는 `~합니다` 체로 쓴다. 블로그 본문은 평서체 `~다`.
+- 글(`posts/`)은 GitHub에 올리지 않는다. GitHub 리포에는 도구만 올린다.
+- 블로그 글에 영상 링크·타임스탬프 링크를 넣지 않는다.
+- 되돌리기 어려운 작업(강제 푸시, 기록 재작성, 삭제)은 사용자 확인 후에만 한다.
+
+## 파이프라인
+
+`write-post` (유튜브 URL) → 수집(youtube-transcript 스킬) → analyst → writer → editor → `posts/` 저장소에 draft 커밋
+
+- Claude Code: `/write <URL>` (`.claude/commands/write.md`), 역할은 서브에이전트(`.claude/agents/`)
+- Codex: `$write-post` 스킬 (`.agents/skills/write-post/`), 역할 파일을 읽고 직접 순서대로 수행
+
+## 폴더
+
+- `.claude/skills/` 스킬 원본. `.agents/skills/`는 Codex용 심볼릭 링크다 (같은 파일)
+  - `youtube-transcript/` 자막 추출 스크립트
+  - `blog-style/` 문체·구조 규칙. 계속 갱신된다. 변경은 `changelog.md`, 출처는 `references.md`
+- `.claude/agents/` analyst, writer, editor 역할 정의 (Codex에서는 역할 지침 문서로 읽는다)
+- `.claude/commands/write.md` Claude Code용 `/write`
+- `.agents/skills/write-post/` Codex용 글쓰기 파이프라인 스킬
+- `posts/` 글 저장소. 도구 리포에서 `.gitignore`로 제외된 **별도 로컬 git 저장소**다 (원격 없음)
+- `posts/<YYYY-MM-DD>-<video_id>/` 글 하나당 폴더
+  - `meta.json`, `transcript.md` 원재료
+  - `analysis.md` 분석, `post.md` 본문, `publish.md` 제목·태그·카테고리, `editor-notes.md` 교정 메모
+  - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
+  - `preview.html` 티스토리 스킨 CSS를 입힌 미리보기 (git 제외)
+- `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
+- `tools/render_post.py` 마크다운 → 티스토리용 HTML 변환기. `--preview`는 미리보기 페이지
+- `tools/set_clipboard_html.js` 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣는다 (macOS)
+
+`git -C posts log`에서 `draft:` 커밋은 AI 초안, `copy: ... vN` 커밋은 사용자가 실제로 복사한 버전이다. 둘의 차이가 사용자의 수정이다.
+
+## git 규칙
+
+- 도구 리포(이 폴더의 `git`)에는 도구만 커밋한다. 글 파일은 절대 도구 리포에 커밋하지 않는다.
+- 글 관련 커밋은 모두 `git -C posts ...`로 한다.
+- 도구 리포 커밋 작성자는 `mooonseok` (리포 로컬 설정).
+
+## 규칙
+
+- 티스토리 공식 Open API는 종료됐다. 블로그에 자동으로 올리지 않는다. 발행은 사용자가 붙여넣기로 한다.
+- 비공식 세션·쿠키 기반 업로드는 쓰지 않는다 (계정 제재·정책 변경 위험).
+- 글을 쓰거나 고칠 때는 항상 `blog-style` 스킬을 따른다.
+- `blog-style`은 사용자의 승인 없이 바꾸지 않는다.
+- Python은 `.venv/bin/python`을 쓴다. 의존성은 `requirements.txt`.
+- 사람·저장소 링크는 직접 열어서 확인한 주소만 쓴다. 주소를 지어내지 않는다.
+
+## 사용자가 남기는 주석
+
+`post.md`를 고칠 때 사용자가 남기는 주석. `/feedback`(예정)이 이것을 근거로 규칙을 만든다. 주석은 발행본에서 자동으로 빠진다.
+
+- `<!-- 왜: ... -->` 이렇게 고친 이유. `전체 적용`이 붙으면 같은 패턴을 글 전체에 적용한 것으로 본다
+- `<!-- 이 글만 -->` 이 글에만 해당하는 수정. 규칙으로 만들지 않는다
+- `<!-- 좋음: ... -->` 마음에 든 부분. 예시 후보
+- `<!-- 확인 필요 -->` 작성 단계에서 붙는 미검증 표시
+- `<!-- 내 생각: ... -->` 사용자가 직접 의견을 쓸 자리
