@@ -8,3 +8,6 @@ posts/
 
 # 이미지 생성 결과물 (블로그용 자료라 GitHub에 올리지 않음)
 output/
+
+# 디자인 목업 (글 내용이 들어 있어 GitHub에 올리지 않음)
+design/mockups/
