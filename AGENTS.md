@@ -45,7 +45,7 @@
   - `preview.html` 티스토리 스킨 CSS를 입힌 미리보기 (git 제외)
 - `auto` (`sh auto`) 유튜브 링크 하나로 초안까지 자동 실행 (Codex CLI 필요)
 - `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
-- `tools/render_post.py` 마크다운(+부품 문법 `:::summary` 등) → 티스토리용 HTML 변환기. `--preview`는 미리보기 페이지
+- `tools/render_post.py` 마크다운(+부품 문법 `:::summary` 등) → 티스토리용 HTML 변환기. 티스토리 자체 서식(data-ke-*)과 글자색·배경색만 쓴다. 티스토리 편집기가 나머지 인라인 스타일(display, border, radius, gradient, margin, word-break 등)을 지우기 때문이며, `sanitize()`가 허용 목록 밖의 스타일을 미리 지운다. `--preview`는 미리보기 페이지
 - `tools/lint_post.py` blog-style 규칙 자동 검사 (메타 문장, 해요체, 문단 길이, 영상 링크, 필수 부품, 출처 형식, 이미지)
 - `tools/set_clipboard_html.js` 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣는다 (macOS)
 

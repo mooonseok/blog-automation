@@ -26,3 +26,10 @@
 - 이미지 규칙과 공통 이미지 스타일, images.md 형식
 - 기준 예시 examples/pstack-example.md (+ images.md)
 - tools/lint_post.py로 기계적 검사
+
+## 2026-10-28 — 디자인을 티스토리 자체 서식으로 (렌더러)
+- 사용자가 붙여넣은 결과: flex 배치·원형 번호·테두리·그라데이션 형광펜이 모두 지워지고 색·배경색만 남음
+- 발행된 티스토리 글 조사: 살아남는 인라인 스타일은 color, background-color, text-align 정도. 나머지는 data-ke-* 자체 서식
+- 부품 문법은 그대로 두고 출력만 변경: summary·팁·주의·용어 = 인용 style3 박스, takeaway = 인용 style1(가운데 따옴표),
+  quote = 인용 style2(세로선), steps = ①② 번호 문단, 표 = style11, 형광펜 = 배경색
+- render_post.py의 sanitize()가 허용 목록 밖 스타일을 지워 미리보기가 실제 결과와 같게 함
