@@ -35,7 +35,7 @@ version_date() {
 
 find_post() {
   if [ $# -eq 0 ]; then
-    ls -d posts/*/ 2>/dev/null | sort | tail -1 | sed 's:/$::'
+    ls -d posts/*/ 2>/dev/null | sed 's:/$::' | sort | tail -1
     return
   fi
   key=$1
@@ -54,7 +54,7 @@ find_post() {
 
 save_version() {  # $1 글 폴더, $2 발행본 파일, $3 버전 번호
   mkdir -p "$1/versions"
-  cp "$2" "$1/versions/v$3.md"
+  cat "$2" > "$1/versions/v$3.md"
   printf 'v%s\t%s\n' "$3" "$(date '+%Y-%m-%d %H:%M')" >> "$1/versions/log.tsv"
   name=$(basename "$1")
   ensure_posts_repo
@@ -118,7 +118,7 @@ ask() {
 choose_post() {
   echo "어떤 글을 복사할까요?"
   i=0
-  for d in $(ls -d posts/*/ | sort -r | sed 's:/$::'); do
+  for d in $(ls -d posts/*/ | sed 's:/$::' | sort -r); do
     i=$((i + 1))
     v=$(last_version "$d")
     if [ -n "$v" ]; then v="마지막 v$v"; else v="복사한 적 없음"; fi
@@ -127,7 +127,7 @@ choose_post() {
   echo "  q) 취소"
   answer=$(ask)
   [ "$answer" = q ] && exit 0
-  picked=$(ls -d posts/*/ | sort -r | sed 's:/$::' | sed -n "${answer}p")
+  picked=$(ls -d posts/*/ | sed 's:/$::' | sort -r | sed -n "${answer}p")
   [ -n "$picked" ] || die "잘못된 선택: $answer"
   handle "$picked"
 }
