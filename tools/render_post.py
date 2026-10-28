@@ -19,7 +19,7 @@ ACCENT = "#3d62ce"
 TEXT = "word-break: keep-all; overflow-wrap: break-word;"
 
 STYLE = {
-    "p": f"margin: 0 0 26px !important; padding: 0 !important; line-height: 1.85; {TEXT}",
+    "p": f"line-height: 1.85; {TEXT}",
     "p_box": f"margin: 0 0 8px !important; padding: 0 !important; line-height: 1.8; {TEXT}",
     "h2": (
         "margin: 64px 0 22px !important; padding: 0 0 12px; border-bottom: 2px solid #222; "
@@ -90,6 +90,25 @@ def style_cell(match):
     return f'<{tag} style="{STYLE[tag]} {existing}">'
 
 
+# 티스토리 편집기가 "빈 줄"을 만들 때 쓰는 빈 문단. 인라인 여백(margin)은 붙여넣을 때 지워지므로 이것으로 간격을 만든다
+SPACER = '<p data-ke-size="size16">&nbsp;</p>'
+TOP_BLOCK = r"<(?:p|ul|ol|table|blockquote|pre|h2|h3|hr)\b"
+
+
+def insert_spacers(html):
+    """최상위 블록 사이마다 빈 문단을 하나씩 넣는다. 인용 상자 안쪽은 건드리지 않는다."""
+    boxes = []
+
+    def stash(match):
+        boxes.append(match.group(0))
+        return f"\x00{len(boxes) - 1}\x00"
+
+    html = re.sub(r"<blockquote\b.*?</blockquote>", stash, html, flags=re.S)
+    blocks = [b for b in re.split(rf"\n(?=\x00|{TOP_BLOCK})", html) if b.strip()]
+    html = f"\n{SPACER}\n".join(blocks)
+    return re.sub(r"\x00(\d+)\x00", lambda m: boxes[int(m.group(1))], html)
+
+
 def render(md_text):
     html = markdown.markdown(md_text, extensions=["tables", "fenced_code", "sane_lists"])
 
@@ -106,7 +125,7 @@ def render(md_text):
     for tag in ("p", "h2", "h3", "ul", "ol", "li", "table", "strong"):
         html = html.replace(f"<{tag}>", f"<{tag}{style_attr(tag)}>")
     html = html.replace("<hr />", f"<hr{style_attr('hr')} />")
-    return html
+    return insert_spacers(html)
 
 
 def preview_page(body):
