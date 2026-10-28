@@ -17,6 +17,7 @@
 
 - Claude Code: `/write <URL>` (`.claude/commands/write.md`), 역할은 서브에이전트(`.claude/agents/`)
 - Codex: `$write-post` 스킬 (`.agents/skills/write-post/`), 역할 파일을 읽고 직접 순서대로 수행
+- 자동 실행: `sh auto <URL> [추가 요청]` (`auto` 스크립트). 수집·커밋은 스크립트, 분석·작성·교정은 `codex exec --sandbox workspace-write`. 결과 보고는 글 폴더의 `codex-report.md`
 
 ## 폴더
 
@@ -32,6 +33,7 @@
   - `analysis.md` 분석, `post.md` 본문, `publish.md` 제목·태그·카테고리, `editor-notes.md` 교정 메모
   - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
   - `preview.html` 티스토리 스킨 CSS를 입힌 미리보기 (git 제외)
+- `auto` (`sh auto`) 유튜브 링크 하나로 초안까지 자동 실행 (Codex CLI 필요)
 - `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
 - `tools/render_post.py` 마크다운 → 티스토리용 HTML 변환기. `--preview`는 미리보기 페이지
 - `tools/set_clipboard_html.js` 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣는다 (macOS)

@@ -1,0 +1,89 @@
+#!/bin/sh
+# 유튜브 링크 하나로 블로그 초안을 자동으로 만든다 (Codex CLI 사용).
+#
+# 사용법:
+#   sh auto <유튜브 링크> [이번 글에 대한 추가 요청]
+#   예: sh auto "https://youtu.be/u2oDdU6z4Bw" "입문자 대상으로, 핵심만 짧게"
+#
+# 흐름: 자막 수집(스크립트) → 분석·작성·교정(codex exec) → 결과 확인 → posts/ 저장소에 draft 커밋
+# codex exec의 workspace-write 샌드박스는 네트워크를 막고 .git을 읽기 전용으로 두므로,
+# 네트워크가 필요한 수집과 git 커밋은 이 스크립트가 하고 Codex는 글 파일 작성만 한다.
+set -eu
+
+cd "$(dirname "$0")"
+export LC_ALL=en_US.UTF-8
+
+die() { echo "$*" >&2; exit 1; }
+
+[ $# -ge 1 ] || die "사용법: sh auto <유튜브 링크> [추가 요청]"
+url=$1
+shift
+request=${*:-없음}
+
+command -v codex >/dev/null 2>&1 || die "codex CLI가 없음. 설치: npm install -g @openai/codex, 로그인: codex login"
+[ -x .venv/bin/python ] || die ".venv가 없음. README의 설치 단계를 먼저 실행"
+
+# 1. 수집: 임시 폴더에 받은 뒤, 같은 영상의 글이 이미 있으면 덮어쓰지 않고 -2, -3… 새 폴더로 옮긴다
+echo "[1/4] 자막 수집"
+tmp=$(mktemp -d)
+if ! fetched=$(.venv/bin/python .claude/skills/youtube-transcript/scripts/fetch_transcript.py "$url" --out "$tmp"); then
+  rm -rf "$tmp"
+  die "자막 수집 실패. 자막이 없는 영상이거나 유튜브 요청 제한(429)일 수 있음"
+fi
+src=$(echo "$fetched" | tail -1)
+base=$(basename "$src")
+name=$base
+n=2
+while [ -e "posts/$name" ]; do name="$base-$n"; n=$((n + 1)); done
+mkdir -p posts
+mv "$src" "posts/$name"
+rm -rf "$tmp"
+dir="posts/$name"
+echo "$fetched" | head -1
+echo "작업 폴더: $dir"
+if [ "$name" != "$base" ]; then echo "(같은 영상의 글이 이미 있어서 새 폴더로 만듦)"; fi
+
+# 2. 분석·작성·교정: Codex가 역할 파일을 읽고 순서대로 수행한다
+echo "[2/4] Codex로 분석 → 작성 → 교정 (몇 분 걸림)"
+prompt="작업 폴더: $dir
+추가 요청: $request
+
+.agents/skills/write-post/SKILL.md의 2~4단계(분석 → 작성 → 교정)만 수행한다.
+수집(1단계)과 git 커밋(5단계)은 이 스크립트가 이미 하거나 나중에 하므로 하지 않는다. 네트워크도 쓰지 않는다.
+단계마다 역할 파일(.claude/agents/analyst.md, writer.md, editor.md)과 .claude/skills/blog-style/SKILL.md를 처음부터 끝까지 읽고 그 역할로 수행한다.
+만들 파일: $dir/analysis.md, $dir/post.md, $dir/publish.md, $dir/editor-notes.md
+작업 폴더 밖의 파일은 수정하지 않는다.
+마지막 메시지는 write-post 6단계의 보고 형식에 맞춰 한국어로 짧게 쓴다."
+
+if ! codex exec --sandbox workspace-write -C "$(pwd)" -o "$dir/codex-report.md" "$prompt"; then
+  die "Codex 실행 실패. 수집한 자막은 남겨 둠: $dir"
+fi
+
+# 3. 결과 확인
+echo "[3/4] 결과 확인"
+for f in analysis.md post.md publish.md; do
+  [ -s "$dir/$f" ] || die "$dir/$f 가 만들어지지 않음. Codex 보고: $dir/codex-report.md"
+done
+if grep -nE 'youtube\.com|youtu\.be' "$dir/post.md" >&2; then
+  echo "[주의] 본문에 영상 링크가 있음 (위 줄). blog-style 규칙상 지워야 함" >&2
+fi
+
+# 4. posts/ 저장소에 draft 커밋 (이후 사용자가 고친 부분을 찾는 기준점)
+echo "[4/4] posts/ 저장소에 draft 커밋"
+if [ ! -d posts/.git ]; then
+  git -C posts init -q -b main
+  for key in user.name user.email; do
+    value=$(git config "$key" || true)
+    if [ -n "$value" ]; then git -C posts config "$key" "$value"; fi
+  done
+fi
+title=$(sed -n 's/^  1\. //p' "$dir/publish.md" | head -1)
+git -C posts add "$name"
+git -C posts commit -q -m "draft: ${title:-$name}" -- "$name"
+
+echo
+echo "완료: $dir"
+echo "다음 할 일"
+echo "  1. 본문 확인·수정: $dir/post.md"
+echo "  2. 복사: sh copy-post   (새 글이라 바로 v1로 복사됨)"
+echo "  3. 티스토리 글쓰기 → HTML 모드에 붙여넣기 → 카테고리 AI → 비공개 저장 후 확인"

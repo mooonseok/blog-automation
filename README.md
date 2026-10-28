@@ -220,7 +220,40 @@ CLAUDE.md                    Claude가 따르는 프로젝트 규칙
 
 ## Codex에서 쓰기
 
-이 리포는 Codex에서도 쓸 수 있습니다. Codex는 `AGENTS.md`(공통 지침)를 자동으로 읽고, `.agents/skills/`의 스킬을 씁니다.
+### 한 줄로 자동 실행: `sh auto`
+
+Codex CLI가 설치돼 있으면, 대화 없이 터미널 명령 하나로 초안을 만들 수 있습니다.
+
+```bash
+sh auto "https://www.youtube.com/watch?v=..."
+```
+
+```bash
+sh auto "https://youtu.be/..." "입문자 대상으로, 핵심만 짧게"
+```
+
+| 단계 | 하는 일 | 누가 |
+|---|---|---|
+| 1. 수집 | 자막과 영상 정보를 가져옵니다. 같은 영상의 글이 있으면 `-2`, `-3` 새 폴더로 만듭니다 | 스크립트 |
+| 2. 분석·작성·교정 | `codex exec`가 역할 파일과 `blog-style`을 읽고 순서대로 씁니다 | Codex |
+| 3. 확인 | 결과 파일이 생겼는지, 영상 링크가 남았는지 검사합니다 | 스크립트 |
+| 4. 커밋 | `posts/` 저장소에 `draft:`로 커밋합니다 | 스크립트 |
+
+Codex는 네트워크가 막히고 `.git`이 읽기 전용인 환경에서 실행되기 때문에, 수집과 커밋은 스크립트가 맡습니다. Codex의 마지막 보고는 글 폴더의 `codex-report.md`에 저장됩니다.
+
+처음 한 번만 설치와 로그인이 필요합니다. 로그인은 개인 ChatGPT 계정으로 하면 구독에 포함된 사용량으로 동작합니다.
+
+```bash
+npm install -g @openai/codex
+```
+
+```bash
+codex login
+```
+
+### 대화하면서 쓰기
+
+이 리포는 Codex 대화 화면에서도 쓸 수 있습니다. Codex는 `AGENTS.md`(공통 지침)를 자동으로 읽고, `.agents/skills/`의 스킬을 씁니다.
 
 - 글 만들기: `$write-post <유튜브 링크>` (CLI에서 `/skills`로 목록 확인)
 - 처음 옮겨 왔다면 첫 메시지로 "HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘"를 보내세요. 지금까지의 결정과 다음 작업이 정리돼 있습니다.

@@ -78,6 +78,10 @@ HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘. 읽은 뒤 "5. 다음 작업"�
     - 처음엔 HTML 소스를 글자로만 복사해서, HTML 모드가 아닌 곳에 붙여넣으면 태그가 그대로 보였습니다. 그래서 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣도록 바꿨습니다.
     - 사용자가 기본모드로 붙여넣은 결과, 티스토리가 인라인 스타일을 모두 지웠습니다. 이게 2차 개편(5장)의 계기입니다.
 13. **2차 개편안 제시 (승인 대기 중)**: 5장 전체입니다. 이 문서를 만든 시점에 사용자는 개편안을 보고 이미지 프롬프트 기능을 추가로 요청한 상태였고, 아직 구현은 시작하지 않았습니다.
+14. **Codex 이전 준비**: 이 문서, `AGENTS.md`, `.agents/skills/write-post`를 만들었습니다. 실수로 커밋된 이미지(`output/`)는 사용자 승인을 받아 GitHub 기록에서 지웠습니다.
+15. **스크립트만으로 실행**: 사용자는 "1번 방식(CLI를 스크립트에서 호출)"을 Codex로 하기로 정했습니다.
+    - 그래서 `sh auto <링크> [추가 요청]`을 만들었습니다. 수집과 커밋은 스크립트가 하고, 분석·작성·교정은 `codex exec --sandbox workspace-write`가 합니다.
+    - 이 컴퓨터에는 Codex CLI가 없어서, 가짜 `codex`로 흐름(새 폴더 번호 매기기, 인자 전달, 결과 확인, 커밋, 실패 처리)만 시험했습니다. **실제 Codex로 끝까지 돌려 본 적은 아직 없습니다.**
 
 ## 4. 현재 상태
 
@@ -88,6 +92,7 @@ HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘. 읽은 뒤 "5. 다음 작업"�
   AGENTS.md / CLAUDE.md            공통 지침 / Claude용 (AGENTS.md를 불러옴)
   HANDOFF.md                       이 문서
   README.md                        사용자용 사용법 (합니다체)
+  auto                             sh auto <링크>: 수집 → codex exec(분석·작성·교정) → draft 커밋
   copy-post                        sh copy-post: HTML로 복사 + 버전 기록
   tools/render_post.py             마크다운 → 티스토리 HTML (+ --preview)
   tools/set_clipboard_html.js      클립보드에 HTML·텍스트 두 형식 넣기 (macOS)
@@ -273,6 +278,7 @@ CSS 주소는 `tools/render_post.py`의 `TISTORY_CSS`에 있습니다. 미리보
   gh repo clone mooonseok/blog-automation
   ```
   옮긴 뒤 `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`를 실행합니다. `posts/`는 위 백업 리포에서 `posts/` 폴더로 클론합니다.
+- [ ] **Codex CLI 설치와 로그인 (개인 계정)**: `npm install -g @openai/codex` 후 `codex login`. 그다음 `sh auto <링크>`로 첫 실행을 해 보고, 실패하면 글 폴더의 `codex-report.md`를 확인합니다.
 - [ ] **git 설정**: 이 컴퓨터의 전역 git 설정은 회사 계정입니다. 도구 리포는 로컬 설정으로 `mooonseok`과 noreply 이메일을 씁니다. 개인 컴퓨터에서는 개인 설정을 쓰세요.
 - [ ] **GitHub 로그인**: `gh`는 개인 계정 `mooonseok`으로 로그인돼 있습니다. 회사 노트북이라면 반납 전에 `gh auth logout`을 실행하세요.
 - [ ] **Claude 쪽 기록**: Claude 메모리에 저장된 것은 "항상 한국어로 답변" 하나이며, 2장에 옮겨 두었습니다. 대화 기록은 회사 계정에 남습니다.
