@@ -67,7 +67,7 @@ $extra
       -o "$dir/logs/$role.md" "$prompt" > "$dir/logs/$role.log" 2>&1; then
     die "$role 단계 실패. 로그: $dir/logs/$role.log"
   fi
-  sed 's/^/  /' "$dir/logs/$role.md"
+  awk '{ print "  " $0 }' "$dir/logs/$role.md"
 }
 
 need() {  # 역할이 만들어야 할 파일이 있는지 확인
