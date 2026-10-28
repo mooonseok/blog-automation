@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-BODY_MIN, BODY_MAX = 1000, 2500
+BODY_MIN, BODY_MAX = 1800, 3500
 MAX_SENTENCES = 3
 MAX_IMAGES = 2
 
