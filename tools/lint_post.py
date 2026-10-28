@@ -45,6 +45,35 @@ SUMMING = re.compile(r"결론적으로|따라서|이를 통해|그러므로|요�
 LIST_INTRO = re.compile(r"다음과 같")                                                       # D-3
 
 
+# AI가 자주 쓰는 표현 사전 (im-not-ai quick-rules D·A·G·I·H·B 항목 + blog-style S1~S3). 모두 경고.
+# (정규식, 규칙 ID, 고치는 법). 사람도 자주 쓰는 표현(~를 통해, ~것이다)은 넣지 않았다.
+AI_PHRASES = [
+    (r"시사하는 바가|시사점을 준다|주목할 만하다|주목할 만한|눈여겨볼 만하다|매우 중요하다|무엇보다 중요하다", "D-2", "의의 과장. 지우거나 구체적인 결론으로"),
+    (r"(할|해야 할) (때다|때입니다|시점이다)|순간이다\.", "D-6", "결말 공식. 구체적인 동사로 단언"),
+    (r"[을를] 넘어(서)? ", "D-7·A-21", "'X를 넘어 Y' 변환 공식. 직접 단언으로"),
+    (r"(으로|로) 이어진다|에 직결된다", "D-9", "결산 공식. 인과를 구체적으로"),
+    (r"하는 이유다\.", "D-10", "도치 결산. '그래서 ~다'처럼 순방향으로"),
+    (r"과제도 남아 있다|한계도 분명하다|아쉬운 점도 있다", "D-12", "문패 문장. 실제 과제를 바로 쓴다"),
+    (r"잠식|청사진|적신호|경고등|신호탄|움켜쥐|뿌리내리|짓누르|서늘하다", "D-14", "AI식 은유. 명제로 풀어 쓴다"),
+    (r"에 있어(서)?", "A-3", "번역투. '~에서'로"),
+    (r"되어진다|되어지는|지게 된다", "A-8", "이중 피동. 능동이나 단일 피동으로"),
+    (r"에 의해", "A-9", "피동 번역투. 행위자를 주어로"),
+    (r"가지고 있다|갖고 있다", "A-7", "have 직역. '~이 있다', 형용사로"),
+    (r"[라다]고 할 수 있다|라 할 수 있다", "S1", "단정으로"),
+    (r"하게 되었다|하게 됐다", "S2", "'~했다'로"),
+    (r"(진행|수행|실시)(한다|했다|하고|하며|되었다|됐다)", "S2", "구체적인 동사로 ('테스트를 실시한다' → '테스트한다')"),
+    (r"(로 보인다|로 판단된다|라고 여겨진다)", "G-1", "추측 종결 반복. 형태만 바꾸고 단정으로 바꾸지는 않는다"),
+    (r"(혁신적|획기적|게임 체인저|패러다임|시너지|원활한|강력한 성능)", "B-2", "광고성 단어. 구체적인 사실로"),
+    (r"(매우|정말|굉장히|엄청나게|상당히) ", "S3", "강조 부사. 빼거나 수치로"),
+]
+# 한 글에 여러 번 나올 때만 신호가 되는 표현: (정규식, 기준 횟수, 규칙 ID, 고치는 법)
+AI_REPEATED = [
+    (r"에 대해(서)?", 3, "A-1", "번역투 밀집. 목적격 조사로 ('X에 대해 설명' → 'X를 설명')"),
+    (r"다는 것이다|다는 뜻이다", 3, "I-3", "'~다'로 바로 끝낸다"),
+    (r"즉,? ", 3, "H-4", "'즉' 남발. 빼거나 '곧'으로"),
+    (r"(중요하다|핵심적|효과적)", 3, "S3", "뭉뚱그린 평가어. 무엇이 왜 그런지 구체적으로"),
+]
+
 def ends_with_n_da(sentence):
     """현재형 '~ㄴ다/~는다' 종결인지 (E-2). '다' 앞 글자의 받침이 ㄴ이면 해당."""
     s = re.sub(r"[\s\"”’)\]]+$", "", sentence).rstrip(".!?")
@@ -63,6 +92,15 @@ def ai_tells(prose, all_lines, paragraphs, err, warn):
             warn(n, "'핵심은 ~다' 분열문이다 (D-8). 주어-서술로 바로 쓴다")
         if LIST_INTRO.search(s):
             warn(n, "'다음과 같다' 열거 도입이다 (D-3). 무엇을 보여 주는지 구체적으로 쓴다")
+    for n, s in all_lines:
+        clean = strip_quoted(s)
+        hits = [(rid, hint, m.group(0)) for pat, rid, hint in AI_PHRASES for m in [re.search(pat, clean)] if m]
+        for rid, hint, word in hits:
+            warn(n, f"AI 상투 표현 '{word.strip()}' ({rid}). {hint}")
+    for pat, limit, rid, hint in AI_REPEATED:
+        found = [n for n, s in all_lines for _ in re.finditer(pat, strip_quoted(s))]
+        if len(found) >= limit:
+            warn(found[limit - 1], f"'{pat.split('(')[0].split('|')[0]}' 류가 {len(found)}번이다 ({rid}). {hint}")
     contrasts = [n for n, s in prose if CONTRAST.search(s)]
     if len(contrasts) >= 2:
         warn(contrasts[1], f"'A가 아니라 B' 대구가 {len(contrasts)}번이다 (C-8). 가장 좋은 1번만 남긴다 ({', '.join(map(str, contrasts))}행)")
@@ -211,11 +249,60 @@ def lint(post_path):
     return errors, warns, body_chars
 
 
+PROTECTED = re.compile(r"\"[^\"]*\"|“[^”]*”|`[^`]*`|\]\([^)]*\)|<!--.*?-->")
+COMMA_FIX = re.compile(r"(\S*[가-힣](?:고|며|지만|면서|아서|어서|려고))\s*,(\s*)")
+CONJUNCTIONS = {"그리고", "그러고", "그러면서", "그러며", "하지만", "그러나", "그래서"}
+
+
+def fix_commas(text):
+    """연결어미 뒤 쉼표(C-11)를 지운다. 따옴표·코드·링크 주소·주석 안과 문두 접속사는 건드리지 않는다."""
+    count = 0
+
+    def drop(match):
+        nonlocal count
+        word = match.group(1).lstrip("([“‘*")
+        if word in CONJUNCTIONS:
+            return match.group(0)
+        count += 1
+        return match.group(1) + (match.group(2) or " ")
+
+    out, last = [], 0
+    for m in PROTECTED.finditer(text):
+        out.append(COMMA_FIX.sub(drop, text[last:m.start()]))
+        out.append(m.group(0))
+        last = m.end()
+    out.append(COMMA_FIX.sub(drop, text[last:]))
+    return "".join(out), count
+
+
+def fix(post_path):
+    """기계적으로 고칠 수 있는 오류만 고친다. 지금은 C-11 (연결어미 뒤 쉼표). 고친 개수를 돌려준다."""
+    lines, total, in_code, in_source = post_path.read_text(encoding="utf-8").split("\n"), 0, False, False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_code = not in_code
+        if stripped.startswith("## "):
+            in_source = stripped[3:].strip() == "출처"
+        if in_code or in_source or stripped.startswith(("|", "#", ":::")):
+            continue
+        lines[i], n = fix_commas(line)
+        total += n
+    if total:
+        post_path.write_text("\n".join(lines), encoding="utf-8")
+    return total
+
+
 def main():
-    if len(sys.argv) != 2:
-        sys.exit("사용법: lint_post.py <글 폴더 또는 post.md>")
-    path = Path(sys.argv[1])
+    args = sys.argv[1:]
+    do_fix = "--fix" in args
+    args = [a for a in args if a != "--fix"]
+    if len(args) != 1:
+        sys.exit("사용법: lint_post.py [--fix] <글 폴더 또는 post.md>")
+    path = Path(args[0])
     post = path / "post.md" if path.is_dir() else path
+    if do_fix:
+        print(f"자동 수정: 연결어미 뒤 쉼표 {fix(post)}곳")
     errors, warns, chars = lint(post)
     for line in errors + warns:
         print(line)

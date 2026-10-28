@@ -145,7 +145,14 @@ CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=medium sh auto "https://youtu.be/..."
 sh copy-post
 ```
 
-1. 자동 검사(`tools/lint_post.py`)를 먼저 돌립니다. 규칙 오류가 있으면 결과를 보여 주고 그래도 복사할지 묻습니다.
+1. 자동 검사(`tools/lint_post.py`)를 먼저 돌립니다. 오류나 경고가 있으면 결과와 함께 고치는 방법을 묻습니다.
+   ```
+     a) 자동 수정 (연결어미 뒤 쉼표 등 기계적인 것만, 즉시)
+     c) Codex로 교정 (오류·경고 전부, editor 역할로 1~3분)
+     y) 이대로 복사
+     n) 취소
+   ```
+   `a`나 `c`로 고치면 다시 검사하고, 고친 내용은 `posts/` 저장소에 `fix: <폴더> …`로 따로 커밋합니다 (내가 고친 부분과 섞이지 않게). 오류·경고가 0개가 되면 바로 다음 단계로 넘어갑니다.
 2. `post.md`를 티스토리용 HTML로 바꿔 클립보드에 넣고, 같은 폴더에 `preview.html`(미리보기)을 만듭니다.
 3. 필요한 이미지가 있으면 개수와 `images.md` 위치를 알려 줍니다.
 
@@ -216,6 +223,7 @@ git -C posts log --oneline -- <글 폴더>
 ```
 
 - `draft: ...` AI가 만든 초안 (`sh auto`, `/write`)
+- `fix: ...` 복사 직전 자동 수정(`a`)이나 Codex 교정(`c`)이 고친 부분 (`sh copy-post`)
 - `copy: ... vN` 직접 고쳐서 실제로 복사해 간 버전 (`sh copy-post`)
 
 둘을 비교하면 직접 고친 부분이 나옵니다.
@@ -249,7 +257,7 @@ gh repo create <글 전용 리포 이름> --private --source=posts --push
 | `codex CLI가 없음` | 2장의 Codex 설치와 로그인을 실행하세요 |
 | `<역할> 단계 실패` | 글 폴더의 `logs/<역할>.log`에 Codex 오류가 남아 있습니다. 로그인 만료나 사용량 한도가 흔한 원인입니다 |
 | `자막 수집 실패` | 자막이 없는 영상이거나 유튜브 요청 제한(429)입니다. 몇 분 뒤 다시 시도하세요. 자막 없는 영상(음성 인식)은 아직 지원하지 않습니다 |
-| 최종 검사 "오류 남음" / 복사할 때 "규칙 오류가 있습니다" | 터미널에 나온 줄 번호를 보고 `post.md`를 고친 뒤 다시 `sh copy-post` |
+| 최종 검사 "오류 남음" / 복사할 때 오류·경고 | `sh copy-post` 메뉴에서 `a`(쉼표 같은 기계적 수정) 또는 `c`(Codex 교정). 직접 고치려면 터미널에 나온 줄 번호를 보세요. 자동 수정만 따로: `.venv/bin/python tools/lint_post.py --fix posts/<폴더>` |
 | 독자 테스트 실패 | `reader-test.md`의 "막힌 곳"을 보고 해당 문단을 고치세요 |
 | `.venv/bin/python: No such file` | 2장의 `venv`, `pip install`을 실행하세요 |
 | `/write`가 명령으로 인식되지 않음 | 이 폴더에서 Claude Code를 열었는지 확인하세요. 이미 열려 있었다면 새 세션을 여세요 |
@@ -268,7 +276,7 @@ docs/
   make_pipeline_svg.py       README 흐름도(라이트·다크 SVG) 생성
 tools/
   render_post.py             마크다운(+부품 문법) → 티스토리 HTML, 미리보기
-  lint_post.py               글쓰기 규칙 자동 검사
+  lint_post.py               글쓰기 규칙 자동 검사 (--fix: 기계적 자동 수정)
   set_clipboard_html.js      클립보드에 서식·소스를 함께 넣기 (macOS)
 .claude/
   agents/                    역할 6개 정의 (analyst, curator, writer, designer, editor, reader)

@@ -98,17 +98,56 @@ show_publish_info() {
   if [ -f "$1/publish.md" ]; then sed '1d' "$1/publish.md"; fi
 }
 
+# 기계·Codex 수정은 사용자의 수정과 섞이지 않게 posts/ 저장소에 따로 커밋한다 (fix: …)
+commit_fix() {  # $1 글 폴더, $2 설명
+  ensure_posts_repo
+  name=$(basename "$1")
+  git -C posts add "$name"
+  git -C posts commit -q -m "fix: $name $2" -- "$name" 2>/dev/null || true
+}
+
+codex_fix() {  # $1 글 폴더, $2 자동 검사 결과
+  command -v codex >/dev/null 2>&1 || die "codex CLI가 없음. 자동 수정(a)만 쓸 수 있음"
+  echo "Codex(editor)로 교정하는 중… (1~3분)"
+  out=$(mktemp)
+  codex exec -m "${CODEX_MODEL:-gpt-6-astra}" -c "model_reasoning_effort=\"${CODEX_EFFORT:-high}\"" \
+    --sandbox workspace-write -C "$(pwd)" --ephemeral -o "$out" \
+    "너는 .claude/agents/editor.md 에 정의된 역할이다. 그 파일을 끝까지 읽고 그 역할로서만 일한다.
+작업 폴더: $1
+고칠 파일은 $1/post.md 하나뿐이다. 다른 파일은 수정하지 않는다. 네트워크를 쓰지 않는다.
+아래 자동 검사 결과의 오류와 경고를 모두 해결한다. 사실·수치·고유명사·부품 문법(:::)은 바꾸지 않고, 고칠 곳만 최소로 고친다.
+$2
+마지막 메시지는 고친 항목 수와 바꾼 내용을 한국어로 3줄 이내로 쓴다." >/dev/null 2>&1 || die "Codex 교정 실패"
+  sed 's/^/  /' "$out"
+  rm -f "$out"
+}
+
 copy_current() {
   dir=$1
-  # 복사 전에 blog-style 규칙 자동 검사. 오류가 있으면 그래도 복사할지 묻는다
-  if ! report=$(.venv/bin/python tools/lint_post.py "$dir" 2>&1); then
+  # 복사 전에 blog-style 규칙 자동 검사. 오류·경고가 있으면 고치는 방법을 고른다
+  while :; do
+    report=$(.venv/bin/python tools/lint_post.py "$dir" 2>&1) && ok=1 || ok=0
+    if [ "$ok" = 1 ] && ! echo "$report" | grep -q '^\[경고\]'; then
+      echo "$report" | tail -1
+      break
+    fi
     echo "$report"
-    printf '규칙 오류가 있습니다. 그래도 복사할까요? (y/N) ' >&2
-    read -r yn || yn=n
-    [ "$yn" = y ] || [ "$yn" = Y ] || die "복사하지 않음. post.md를 고친 뒤 다시 실행"
-  else
-    echo "$report" | tail -1
-  fi
+    echo "  a) 자동 수정 (연결어미 뒤 쉼표 등 기계적인 것만, 즉시)"
+    echo "  c) Codex로 교정 (오류·경고 전부, editor 역할로 1~3분)"
+    echo "  y) 이대로 복사"
+    echo "  n) 취소"
+    printf '선택: ' >&2
+    read -r choice || choice=n
+    case "$choice" in
+      a) fixed=$(.venv/bin/python tools/lint_post.py --fix "$dir" | head -1)
+         echo "$fixed"
+         commit_fix "$dir" "$fixed" ;;
+      c) codex_fix "$dir" "$report"
+         commit_fix "$dir" "Codex 교정" ;;
+      y|Y) break ;;
+      *) die "복사하지 않음" ;;
+    esac
+  done
   tmp=$(mktemp)
   render "$dir" > "$tmp"
   last=$(last_version "$dir")
