@@ -21,7 +21,8 @@ python3 -m venv .venv
 결과는 `posts/<날짜>-<영상ID>/`에 생긴다.
 
 1. `post.md`를 직접 고친다 (주석 규칙은 `CLAUDE.md` 참고)
-2. `scripts/copy_post.sh posts/<폴더>` 실행 → 본문이 클립보드에 복사됨
+2. `scripts/copy_post.sh` 실행 → 가장 최근 글 본문이 클립보드에 복사됨
+   - 예전 글은 폴더 이름 일부로 지정: `scripts/copy_post.sh u2oDdU6z`
 3. 티스토리 글쓰기 → 마크다운 모드로 붙여넣기 → 제목·태그 입력, 카테고리 `AI` → 비공개 저장 후 확인 → 발행
 
 ## 티스토리 자동 발행을 하지 않는 이유
