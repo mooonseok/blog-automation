@@ -1,5 +1,5 @@
 #!/bin/sh
-# 티스토리에 붙여넣을 글 본문(주석 제외)을 클립보드에 복사하고 버전을 남긴다.
+# 티스토리 HTML 모드에 붙여넣을 글 본문(주석 제외, 스타일 적용)을 클립보드에 복사하고 버전을 남긴다.
 #
 # 사용법:
 #   sh copy-post                가장 최근 글. 처음 복사하는 글이면 바로 복사하고,
@@ -76,9 +76,18 @@ ensure_posts_repo() {
   done
 }
 
+# 발행본(마크다운)을 티스토리 HTML 모드용 HTML로 바꿔 클립보드에 넣고, 미리보기 페이지도 만든다
+to_clipboard() {  # $1 글 폴더, $2 발행본 마크다운 파일
+  [ -x .venv/bin/python ] || die ".venv가 없음. README의 설치 단계를 먼저 실행"
+  .venv/bin/python tools/render_post.py < "$2" | pbcopy
+  .venv/bin/python tools/render_post.py --preview < "$2" > "$1/preview.html"
+}
+
 show_publish_info() {
   echo
-  echo "글쓰기: https://moonesok.tistory.com/manage/newpost  (마크다운 모드로 붙여넣기)"
+  echo "글쓰기: https://moonesok.tistory.com/manage/newpost"
+  echo "  → 편집기 모드를 'HTML'로 바꾼 뒤 붙여넣기 (마크다운 모드 아님)"
+  echo "미리보기: open $1/preview.html"
   if [ -f "$1/publish.md" ]; then sed '1d' "$1/publish.md"; fi
 }
 
@@ -95,7 +104,7 @@ copy_current() {
     save_version "$dir" "$tmp" "$ver"
     note="새 버전 저장"
   fi
-  pbcopy < "$tmp"
+  to_clipboard "$dir" "$tmp"
   rm -f "$tmp"
   echo "복사함: $(title_of "$dir") v$ver ($note)"
   pending=$(grep -n '확인 필요' "$dir/post.md" | cut -d: -f1 | tr '\n' ' ' || true)
@@ -104,7 +113,7 @@ copy_current() {
 }
 
 copy_version() {
-  pbcopy < "$1/versions/v$2.md"
+  to_clipboard "$1" "$1/versions/v$2.md"
   echo "복사함: $(title_of "$1") v$2 ($(version_date "$1" "$2")에 저장된 버전)"
   show_publish_info "$1"
 }

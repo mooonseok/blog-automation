@@ -17,7 +17,8 @@
   - `meta.json`, `transcript.md` 원재료
   - `analysis.md` 분석, `post.md` 본문, `publish.md` 제목·태그·카테고리, `editor-notes.md` 교정 메모
   - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
-- `copy-post` (`sh copy-post`) 주석을 뺀 본문을 클립보드에 복사하고 버전을 남긴다. 대화형 메뉴가 있으므로 Claude가 대신 실행하지 않고 사용자에게 안내한다
+- `copy-post` (`sh copy-post`) 주석을 뺀 본문을 티스토리 HTML 모드용 HTML로 바꿔 클립보드에 복사하고 버전을 남긴다. 대화형 메뉴가 있으므로 Claude가 대신 실행하지 않고 사용자에게 안내한다
+- `tools/render_post.py` 마크다운 → 인라인 스타일 HTML 변환기. 티스토리 스킨 CSS(문단 여백 0, 링크 inline-block, break-all)를 덮어쓴다. `--preview`는 실제 스킨 CSS를 입힌 미리보기 페이지
 
 `git -C posts log`에서 `draft:` 커밋은 AI 초안, `copy: ... vN` 커밋은 사용자가 실제로 복사한 버전이다. 둘의 차이가 사용자의 수정이다.
 

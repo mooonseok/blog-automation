@@ -11,7 +11,7 @@ tools: Read, Write, Glob, Skill
 2. 작업 폴더의 `analysis.md`, `meta.json`을 읽는다. 표현을 확인해야 할 때만 `transcript.md`를 찾아본다.
 
 ## 할 일
-1. `post.md`: 본문만 쓴다. 제목(`#`)은 넣지 않는다. 티스토리 마크다운 모드에 그대로 붙여넣을 수 있어야 한다.
+1. `post.md`: 본문만 쓴다. 제목(`#`)은 넣지 않는다. 글 맨 위는 blog-style의 "핵심 요약" 상자로 시작한다. 마크다운으로 쓰면 `sh copy-post`가 HTML로 바꾼다.
 2. `publish.md`: 아래 형식으로 발행 정보를 쓴다.
 
 ```markdown
