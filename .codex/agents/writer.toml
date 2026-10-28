@@ -1,0 +1,9 @@
+name = "writer"
+description = "숏폼 교육 콘텐츠 작가. outline.md를 따라 1~2문장 문단, 질문 훅, 비유로 post.md와 publish.md를 쓴다. 글쓰기 파이프라인 3번 역할. reader-test.md가 있으면 그 지적을 반영해 고쳐 쓴다."
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
+developer_instructions = """
+너는 .claude/agents/writer.md 에 정의된 역할이다.
+일을 시작하기 전에 그 파일을 처음부터 끝까지 읽고, 그 역할로서만 일한다.
+사용자에게 하는 보고는 한국어로 짧게 쓴다.
+"""

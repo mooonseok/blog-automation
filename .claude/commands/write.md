@@ -1,50 +1,44 @@
 ---
-description: 유튜브 링크로 블로그 글 초안을 만든다 (수집 → 분석 → 작성 → 교정)
+description: 유튜브 링크로 블로그 글 초안을 만든다 (수집 → 분석 → 설계 → 작성 → 디자인 → 교정 → 독자 테스트)
 argument-hint: <유튜브 URL> [추가 요청]
 ---
 
-유튜브 링크로 블로그 글 초안을 만든다.
+유튜브 링크로 블로그 글 초안을 만든다. 규칙은 `blog-style` 스킬, 기준 예시는 `.claude/skills/blog-style/examples/pstack-example.md`.
 
 입력: $ARGUMENTS
 (첫 번째 값이 URL, 나머지는 이번 글에 대한 추가 요청이다. 추가 요청은 blog-style보다 우선한다.)
 
 ## 1. 수집
-`youtube-transcript` 스킬대로 자막을 가져온다.
-
 ```bash
 .venv/bin/python .claude/skills/youtube-transcript/scripts/fetch_transcript.py "<URL>"
 ```
+출력 마지막 줄이 작업 폴더다. 같은 영상 폴더에 이미 `post.md`가 있으면 덮어쓰지 말고 사용자에게 먼저 묻는다.
 
-출력 마지막 줄의 작업 폴더 경로를 이후 모든 단계에 넘긴다. 실패하면 이유를 알리고 멈춘다.
-같은 영상 폴더가 이미 있고 `post.md`가 있으면 덮어쓰지 말고 사용자에게 먼저 묻는다.
+## 2~7. 역할 (서브에이전트를 순서대로, 각자 작업 폴더 경로와 추가 요청을 넘긴다)
 
-## 2. 분석
-`analyst` 서브에이전트에게 작업 폴더 경로를 주고 `analysis.md`를 만들게 한다.
+| 순서 | 서브에이전트 | 만드는 것 |
+|---|---|---|
+| 2 | `analyst` (기술 리서처) | `analysis.md` |
+| 3 | `curator` (편집장) | `outline.md` |
+| 4 | `writer` (숏폼 교육 콘텐츠 작가) | `post.md`, `publish.md` |
+| 5 | `designer` (에디토리얼 디자이너) | `post.md` 부품 정리, 필요하면 `images.md` |
+| 6 | `editor` (교열 기자) | `post.md` 교정, `editor-notes.md` |
+| 7 | `reader` (독자 테스터) | `reader-test.md` |
 
-## 3. 작성
-`writer` 서브에이전트에게 작업 폴더 경로와 추가 요청을 주고 `post.md`, `publish.md`를 만들게 한다.
+- editor 전에 자동 검사를 돌리고 결과를 넘긴다: `.venv/bin/python tools/lint_post.py <작업 폴더>`. 교정 후에도 오류가 남으면 editor를 한 번 더 부른다.
+- reader 결과가 FAIL이면 writer에게 `reader-test.md`를 주고 한 번 고쳐 쓰게 한 뒤 자동 검사를 다시 돌린다.
+- 서브에이전트의 파일 쓰기가 막히면 결과를 텍스트로 받아 메인 세션이 저장한다.
 
-## 4. 교정
-`editor` 서브에이전트에게 작업 폴더 경로를 주고 `post.md`를 교정하고 `editor-notes.md`를 쓰게 한다.
-
-## 5. 기준점 커밋
-글은 도구 리포가 아니라 `posts/` 전용 로컬 저장소에 커밋한다 (GitHub에 올리지 않음).
-이 커밋이 이후 `/feedback`이 "내가 고친 부분"을 찾는 기준점이 된다.
-
+## 8. 기준점 커밋
+글은 `posts/` 전용 로컬 저장소에만 커밋한다 (GitHub에 올리지 않음).
 ```bash
-# posts/.git이 없으면 먼저: git -C posts init -q -b main
 git -C posts add <폴더 이름> && git -C posts commit -m "draft: <제목 후보 1번>"
 ```
 
-`<폴더 이름>`은 `posts/`를 뺀 이름이다 (예: `2026-10-28-u2oDdU6z4Bw`). 도구 리포(`git` 기본)에는 글을 커밋하지 않는다.
-
-## 6. 보고
-아래만 짧게 알린다.
-- 제목 후보 3개와 태그
-- 검증이 필요한 사실 개수, `확인 필요` 표시 위치
+## 9. 보고 (짧게)
+- 제목 후보 3개와 태그, 본문 글자 수
+- 자동 검사 결과, 독자 테스트 결과, 필요한 이미지 수
 - `editor-notes.md`의 "사용자가 판단할 점"
-- 다음 할 일
-  1. `post.md`를 직접 고친다. 애매한 수정에는 `<!-- 왜: ... -->`, 이 글에만 해당하면 `<!-- 이 글만 -->`
-  2. 발행: 터미널에서 `sh copy-post` (새 글이면 바로 v1로 복사) → 티스토리에서 붙여넣고 카테고리 `AI` 선택 → 비공개 저장 후 확인
+- 다음 할 일: `post.md` 확인·수정 → `sh copy-post` → 티스토리 HTML 모드에 붙여넣기 → 이미지 자리 교체 → 비공개 저장 후 확인
 
-블로그에 직접 올리지 않는다. 발행은 항상 사용자가 한다.
+블로그에 직접 올리지 않는다.

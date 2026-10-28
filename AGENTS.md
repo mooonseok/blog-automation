@@ -13,29 +13,40 @@
 
 ## 파이프라인
 
-`write-post` (유튜브 URL) → 수집(youtube-transcript 스킬) → analyst → writer → editor → `posts/` 저장소에 draft 커밋
+수집 → analyst → curator → writer → designer → 자동 검사 → editor → reader (FAIL이면 writer 고쳐 쓰기) → `posts/` 저장소에 draft 커밋
 
+| 역할 | 전문가 | 만드는 것 |
+|---|---|---|
+| analyst | 기술 리서처 | `analysis.md` (자막 보정, 주장·근거·용어) |
+| curator | IT 매거진 편집장 | `outline.md` (핵심 1개, 질문 3개, 버릴 것, 섹션 설계) |
+| writer | 숏폼 교육 콘텐츠 작가 | `post.md`, `publish.md` |
+| designer | 에디토리얼 디자이너 | 부품 배치, `images.md` (이미지 생성 프롬프트) |
+| editor | 교열 기자 | 메타 문장·금지 표현 삭제, 문단 쪼개기, `editor-notes.md` |
+| reader | 영상을 안 본 주니어 개발자 | `reader-test.md` (PASS/FAIL) |
+
+- 자동 실행: `sh auto <URL> [추가 요청]`. 역할마다 `codex exec`를 따로 실행한다 (기본 `gpt-6-astra` / `high`, `CODEX_MODEL`·`CODEX_EFFORT`로 변경). 수집·커밋은 스크립트가 한다. 역할별 로그는 글 폴더의 `logs/`
 - Claude Code: `/write <URL>` (`.claude/commands/write.md`), 역할은 서브에이전트(`.claude/agents/`)
-- Codex: `$write-post` 스킬 (`.agents/skills/write-post/`), 역할 파일을 읽고 직접 순서대로 수행
-- 자동 실행: `sh auto <URL> [추가 요청]` (`auto` 스크립트). 수집·커밋은 스크립트, 분석·작성·교정은 `codex exec --sandbox workspace-write`. 결과 보고는 글 폴더의 `codex-report.md`
+- Codex 대화: `$write-post` 스킬, 역할은 커스텀 에이전트(`.codex/agents/*.toml`, 각자 `.claude/agents/<역할>.md`를 읽음)
 
 ## 폴더
 
 - `.claude/skills/` 스킬 원본. `.agents/skills/`는 Codex용 심볼릭 링크다 (같은 파일)
   - `youtube-transcript/` 자막 추출 스크립트
   - `blog-style/` 문체·구조 규칙. 계속 갱신된다. 변경은 `changelog.md`, 출처는 `references.md`
-- `.claude/agents/` analyst, writer, editor 역할 정의 (Codex에서는 역할 지침 문서로 읽는다)
+- `.claude/agents/` 역할 6개의 정의 원본 (analyst, curator, writer, designer, editor, reader)
+- `.codex/agents/` Codex 커스텀 에이전트 (역할 정의 원본을 읽게 하는 얇은 설정)
 - `.claude/commands/write.md` Claude Code용 `/write`
 - `.agents/skills/write-post/` Codex용 글쓰기 파이프라인 스킬
 - `posts/` 글 저장소. 도구 리포에서 `.gitignore`로 제외된 **별도 로컬 git 저장소**다 (원격 없음)
 - `posts/<YYYY-MM-DD>-<video_id>/` 글 하나당 폴더
   - `meta.json`, `transcript.md` 원재료
-  - `analysis.md` 분석, `post.md` 본문, `publish.md` 제목·태그·카테고리, `editor-notes.md` 교정 메모
+  - `analysis.md` 분석, `outline.md` 설계, `post.md` 본문, `publish.md` 제목·태그, `images.md` 이미지 프롬프트, `editor-notes.md` 교정 메모, `reader-test.md` 독자 테스트, `logs/` 역할별 로그
   - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
   - `preview.html` 티스토리 스킨 CSS를 입힌 미리보기 (git 제외)
 - `auto` (`sh auto`) 유튜브 링크 하나로 초안까지 자동 실행 (Codex CLI 필요)
 - `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
-- `tools/render_post.py` 마크다운 → 티스토리용 HTML 변환기. `--preview`는 미리보기 페이지
+- `tools/render_post.py` 마크다운(+부품 문법 `:::summary` 등) → 티스토리용 HTML 변환기. `--preview`는 미리보기 페이지
+- `tools/lint_post.py` blog-style 규칙 자동 검사 (메타 문장, 해요체, 문단 길이, 영상 링크, 필수 부품, 출처 형식, 이미지)
 - `tools/set_clipboard_html.js` 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣는다 (macOS)
 
 `git -C posts log`에서 `draft:` 커밋은 AI 초안, `copy: ... vN` 커밋은 사용자가 실제로 복사한 버전이다. 둘의 차이가 사용자의 수정이다.

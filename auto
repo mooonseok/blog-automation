@@ -3,13 +3,15 @@
 #
 # 사용법:
 #   sh auto <유튜브 링크> [이번 글에 대한 추가 요청]
-#   예: sh auto "https://youtu.be/u2oDdU6z4Bw" "입문자 대상으로, 핵심만 짧게"
+#   예: sh auto "https://youtu.be/u2oDdU6z4Bw" "입문자 대상으로"
 #   모델·노력 수준 바꾸기: CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=medium sh auto <링크>
 #   (기본값 gpt-6-astra / high)
 #
-# 흐름: 자막 수집(스크립트) → 분석·작성·교정(codex exec) → 결과 확인 → posts/ 저장소에 draft 커밋
+# 흐름 (역할마다 codex exec를 따로 실행해 역할이 섞이지 않게 한다):
+#   수집 → analyst → curator → writer → designer → 자동 검사 → editor → reader → (실패 시 writer 고쳐 쓰기)
+#   → 최종 검사 → posts/ 저장소에 draft 커밋
 # codex exec의 workspace-write 샌드박스는 네트워크를 막고 .git을 읽기 전용으로 두므로,
-# 네트워크가 필요한 수집과 git 커밋은 이 스크립트가 하고 Codex는 글 파일 작성만 한다.
+# 수집과 커밋은 이 스크립트가 하고 Codex는 글 파일만 쓴다. 역할별 로그는 글 폴더의 logs/에 남는다.
 set -eu
 
 cd "$(dirname "$0")"
@@ -21,15 +23,15 @@ die() { echo "$*" >&2; exit 1; }
 url=$1
 shift
 request=${*:-없음}
-# 모델과 노력 수준. 바꾸려면 실행할 때 앞에 붙인다: CODEX_EFFORT=xhigh sh auto <링크>
 model=${CODEX_MODEL:-gpt-6-astra}
 effort=${CODEX_EFFORT:-high}
 
 command -v codex >/dev/null 2>&1 || die "codex CLI가 없음. 설치: npm install -g @openai/codex, 로그인: codex login"
 [ -x .venv/bin/python ] || die ".venv가 없음. README의 설치 단계를 먼저 실행"
+started=$(date +%s)
 
 # 1. 수집: 임시 폴더에 받은 뒤, 같은 영상의 글이 이미 있으면 덮어쓰지 않고 -2, -3… 새 폴더로 옮긴다
-echo "[1/4] 자막 수집"
+echo "[수집] 자막과 영상 정보"
 tmp=$(mktemp -d)
 if ! fetched=$(.venv/bin/python .claude/skills/youtube-transcript/scripts/fetch_transcript.py "$url" --out "$tmp"); then
   rm -rf "$tmp"
@@ -44,39 +46,69 @@ mkdir -p posts
 mv "$src" "posts/$name"
 rm -rf "$tmp"
 dir="posts/$name"
-echo "$fetched" | head -1
-echo "작업 폴더: $dir"
-if [ "$name" != "$base" ]; then echo "(같은 영상의 글이 이미 있어서 새 폴더로 만듦)"; fi
+mkdir -p "$dir/logs"
+echo "  $(echo "$fetched" | head -1)"
+echo "  작업 폴더: $dir"
+echo "  모델: $model / 노력 수준: $effort"
 
-# 2. 분석·작성·교정: Codex가 역할 파일을 읽고 순서대로 수행한다
-echo "[2/4] Codex로 분석 → 작성 → 교정 (몇 분 걸림)"
-prompt="작업 폴더: $dir
-추가 요청: $request
+# 역할 하나를 Codex로 실행한다. $1 역할, $2 진행 표시, $3 이번 단계의 추가 지시
+run_role() {
+  role=$1
+  label=$2
+  extra=$3
+  echo "[$label] $role"
+  prompt="너는 .claude/agents/$role.md 에 정의된 역할이다. 그 파일을 처음부터 끝까지 읽고, 그 역할로서만 일한다.
+작업 폴더: $dir
+사용자 추가 요청: $request
+$extra
+역할 파일이 읽으라고 한 스킬 파일은 .claude/skills/ 아래에 있다 (blog-style은 .claude/skills/blog-style/).
+작업 폴더 밖의 파일은 수정하지 않는다. 네트워크를 쓰지 않는다. 마지막 메시지는 역할 파일의 보고 형식대로 한국어로 짧게 쓴다."
+  if ! codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" --sandbox workspace-write -C "$(pwd)" \
+      -o "$dir/logs/$role.md" "$prompt" > "$dir/logs/$role.log" 2>&1; then
+    die "$role 단계 실패. 로그: $dir/logs/$role.log"
+  fi
+  sed 's/^/  /' "$dir/logs/$role.md"
+}
 
-.agents/skills/write-post/SKILL.md의 2~4단계(분석 → 작성 → 교정)만 수행한다.
-수집(1단계)과 git 커밋(5단계)은 이 스크립트가 이미 하거나 나중에 하므로 하지 않는다. 네트워크도 쓰지 않는다.
-단계마다 역할 파일(.claude/agents/analyst.md, writer.md, editor.md)과 .claude/skills/blog-style/SKILL.md를 처음부터 끝까지 읽고 그 역할로 수행한다.
-만들 파일: $dir/analysis.md, $dir/post.md, $dir/publish.md, $dir/editor-notes.md
-작업 폴더 밖의 파일은 수정하지 않는다.
-마지막 메시지는 write-post 6단계의 보고 형식에 맞춰 한국어로 짧게 쓴다."
+need() {  # 역할이 만들어야 할 파일이 있는지 확인
+  for f in "$@"; do
+    [ -s "$dir/$f" ] || die "$dir/$f 가 만들어지지 않음. 로그: $dir/logs/"
+  done
+}
 
-echo "모델: $model / 노력 수준: $effort"
-if ! codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" \
-    --sandbox workspace-write -C "$(pwd)" -o "$dir/codex-report.md" "$prompt"; then
-  die "Codex 실행 실패. 수집한 자막은 남겨 둠: $dir"
+lint() {  # 자동 검사 결과를 파일로 남기고, 오류가 있으면 1을 돌려준다
+  .venv/bin/python tools/lint_post.py "$dir" > "$dir/logs/lint.txt" 2>&1
+}
+
+run_role analyst "1/6 분석" "만들 파일: $dir/analysis.md"
+need analysis.md
+run_role curator "2/6 설계" "만들 파일: $dir/outline.md"
+need outline.md
+run_role writer "3/6 작성" "만들 파일: $dir/post.md, $dir/publish.md"
+need post.md publish.md
+run_role designer "4/6 디자인" "고칠 파일: $dir/post.md, 필요하면 만들 파일: $dir/images.md"
+need post.md
+
+lint || true
+run_role editor "5/6 교정" "고칠 파일: $dir/post.md, 만들 파일: $dir/editor-notes.md
+자동 검사 결과: $dir/logs/lint.txt (오류를 모두 해결한다)"
+if ! lint; then
+  run_role editor "5/6 교정 (재시도)" "자동 검사에서 아직 오류가 남았다: $dir/logs/lint.txt. 오류만 고친다."
 fi
 
-# 3. 결과 확인
-echo "[3/4] 결과 확인"
-for f in analysis.md post.md publish.md; do
-  [ -s "$dir/$f" ] || die "$dir/$f 가 만들어지지 않음. Codex 보고: $dir/codex-report.md"
-done
-if grep -nE 'youtube\.com|youtu\.be' "$dir/post.md" >&2; then
-  echo "[주의] 본문에 영상 링크가 있음 (위 줄). blog-style 규칙상 지워야 함" >&2
+run_role reader "6/6 독자 테스트" "읽을 파일은 $dir/post.md 하나뿐이다. 다른 파일은 열지 않는다. 만들 파일: $dir/reader-test.md"
+need reader-test.md
+if grep -q "결과: FAIL" "$dir/reader-test.md"; then
+  run_role writer "6/6 고쳐 쓰기" "독자 테스트가 FAIL이다. $dir/reader-test.md의 막힌 곳을 해결하도록 $dir/post.md를 고쳐 쓴다. outline.md의 구조는 유지한다."
+  lint || run_role editor "6/6 교정 (고쳐 쓴 글)" "자동 검사 오류를 고친다: $dir/logs/lint.txt"
 fi
 
-# 4. posts/ 저장소에 draft 커밋 (이후 사용자가 고친 부분을 찾는 기준점)
-echo "[4/4] posts/ 저장소에 draft 커밋"
+# 최종 검사 결과 보여 주기 (오류가 남아 있어도 초안은 커밋하고 사용자에게 알린다)
+echo "[검사] 최종 자동 검사"
+if lint; then status="통과"; else status="오류 남음"; fi
+sed 's/^/  /' "$dir/logs/lint.txt"
+
+# posts/ 저장소에 draft 커밋 (이후 사용자가 고친 부분을 찾는 기준점)
 if [ ! -d posts/.git ]; then
   git -C posts init -q -b main
   for key in user.name user.email; do
@@ -88,9 +120,12 @@ title=$(sed -n 's/^  1\. //p' "$dir/publish.md" | head -1)
 git -C posts add "$name"
 git -C posts commit -q -m "draft: ${title:-$name}" -- "$name"
 
+elapsed=$(( $(date +%s) - started ))
 echo
-echo "완료: $dir"
+echo "완료: $dir  (자동 검사 $status, $((elapsed / 60))분 $((elapsed % 60))초)"
+grep -q "결과: PASS" "$dir/reader-test.md" && echo "독자 테스트: 통과" || echo "독자 테스트: 실패 → $dir/reader-test.md 확인"
+if [ -s "$dir/images.md" ]; then echo "이미지 필요: $dir/images.md 의 프롬프트로 생성"; fi
 echo "다음 할 일"
-echo "  1. 본문 확인·수정: $dir/post.md"
-echo "  2. 복사: sh copy-post   (새 글이라 바로 v1로 복사됨)"
-echo "  3. 티스토리 글쓰기 → HTML 모드에 붙여넣기 → 카테고리 AI → 비공개 저장 후 확인"
+echo "  1. 미리보기·수정: $dir/post.md"
+echo "  2. 복사: sh copy-post"
+echo "  3. 티스토리 글쓰기 → HTML 모드에 붙여넣기 → 이미지 자리 교체 → 카테고리 AI → 비공개 저장 후 확인"
