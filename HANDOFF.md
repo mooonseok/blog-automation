@@ -106,6 +106,11 @@ HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘. 읽은 뒤 "4. 현재 상태"�
     - 실제 Codex 2회차: 20분 48초, 오류 0개, 독자 테스트 통과, 본문 2,413자. 사용자가 확인 후 만족("굿").
 20. **한국어 규칙 강화**: 답변이 자꾸 영어로 새어 나가 `~/.claude/CLAUDE.md`(전역, 새로 만듦)와 프로젝트 `CLAUDE.md` 맨 위에 "답변은 무조건 한국어" 규칙을 넣음.
 
+21. **디자인 스킬 설치와 적용**: 쇼츠(게으른빌더, 「무조건 설치해야하는 클로드 디자인 스킬」)가 소개한 5개를 분석·확인 후 전역 설치 (`~/.agents/skills`, `~/.claude/skills`에 링크). 사용자가 "설치 위치: 전역"을 선택.
+    - taste-skill(design-taste-frontend), web-design-guidelines, agent-browser(+CLI·Chrome), screenshot-to-code, awesome-design-md(파일 모음 + 직접 만든 SKILL.md)
+    - 적용: README의 mermaid 흐름도("말도 안 되게 허접")를 `docs/make_pipeline_svg.py`가 만드는 라이트·다크 SVG로 교체, agent-browser로 렌더링 확인. web-design-guidelines로 블로그 HTML을 검사해 둥근따옴표 변환과 캡션 색 대비(#6b7684) 반영.
+    - **im-not-ai(humanize-korean, 한국어 AI 티 제거, MIT)**: 사용자가 설치를 원했으나 이 세션의 권한 설정이 외부 코드 설치를 막아 미설치. 설치 명령: `npx skills add epoko77-ai/im-not-ai -s '*' -g -a claude-code codex -y`. 설치 후 editor 단계에 연결할지는 사용자와 정할 일 (스킬이 작업 폴더에 `_workspace/`를 만든다).
+
 ## 4. 현재 상태
 
 ### 리포와 파일
@@ -301,6 +306,7 @@ CSS 주소는 `tools/render_post.py`의 `TISTORY_CSS`에 있습니다. 미리보
 - [x] 2차·3차 개편: 재창조, 부품 디자인, 역할 6개, 자동 검사, 독자 테스트, 주인공 설명 필수
 - [ ] `-6` 글을 실제 티스토리에 붙여넣은 모양 확인 (새 디자인으로는 아직 사용자 확인 전)
 - [ ] 다른 영상으로도 `sh auto` 실행해 보기 (지금까지 pstack 영상 하나로만 검증)
+- [ ] im-not-ai(humanize-korean) 설치 후 editor 단계에 한국어 윤문으로 연결할지 결정
 - [ ] `/feedback`: `draft`와 `copy vN`의 차이, 사용자 주석으로 `blog-style` 규칙 학습. 후보 규칙은 2~3편에서 반복될 때만 확정
 - [ ] researcher 팩트체크와 `claims.json`
 - [ ] `/audit`: 정기적으로 예전 글을 재검증하고 빈 주제를 찾아 알림

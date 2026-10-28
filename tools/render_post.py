@@ -35,7 +35,7 @@ ACCENT = "#3d62ce"
 INK = "#191f28"
 BODY = "#333d4b"
 SUB = "#4e5968"
-CAPTION = "#8b95a1"
+CAPTION = "#6b7684"   # 흰 바탕 대비 4.5:1 이상 (작은 글씨 접근성 기준)
 HIGHLIGHT = "#dbe3fa"
 CHIP_BG = "#eceffa"
 
@@ -191,6 +191,26 @@ def style_blocks(html):
     return re.sub(r"<table>.*?</table>", tistory_table, html, flags=re.S)
 
 
+def smart_typography(html):
+    """본문 글자의 곧은따옴표를 둥근따옴표로, ...를 …로 바꾼다. 태그와 코드 안은 건드리지 않는다."""
+    out, in_code = [], 0
+    for part in re.split(r"(<[^>]+>)", html):
+        if part.startswith("<"):
+            tag = re.match(r"</?(\w+)", part)
+            if tag and tag.group(1) in ("code", "pre"):
+                in_code += -1 if part.startswith("</") else 1
+            out.append(part)
+            continue
+        if in_code:
+            out.append(part)
+            continue
+        part = part.replace("...", "…")
+        part = re.sub(r'(^|[\s(\[“‘]|&nbsp;)"', r"\1“", part).replace('"', "”")
+        part = re.sub(r"(^|[\s(\[“‘]|&nbsp;)'", r"\1‘", part).replace("'", "’")
+        out.append(part)
+    return "".join(out)
+
+
 def sanitize(html):
     """티스토리가 지우는 인라인 스타일을 미리 지운다. 남는 것이 곧 티스토리에서 보일 모습이다."""
     def clean(match):
@@ -220,7 +240,7 @@ def render(md_text):
     html = style_blocks(html)
     html = insert_spacers(re.sub(r'<p data-ke-size="size16">@@C(\d+)@@</p>', r"@@C\1@@", html))
     html = re.sub(r"@@C(\d+)@@", lambda m: stash[int(m.group(1))], html)
-    return sanitize(html)
+    return sanitize(smart_typography(html))
 
 
 def preview_page(body):

@@ -6,32 +6,12 @@
 
 ## 한눈에 보는 흐름
 
-```mermaid
-flowchart TD
-    start(["sh auto 유튜브 링크"]) --> fetch["수집 (스크립트)<br/>transcript.md · meta.json"]
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/pipeline-dark.svg">
+  <img alt="sh auto 실행부터 티스토리 발행까지의 흐름: 수집, 분석, 설계, 작성, 디자인(1줄) → 자동 검사, 교정, 독자 테스트, draft 커밋(2줄) → 확인·수정, sh copy-post, 붙여넣기, 발행(3줄)" src="docs/pipeline-light.svg" width="100%">
+</picture>
 
-    subgraph AUTO["sh auto (약 12~21분)"]
-        fetch --> analyst["① analyst · 기술 리서처<br/>analysis.md"]
-        analyst --> curator["② curator · 편집장<br/>outline.md"]
-        curator --> writer["③ writer · 숏폼 교육 콘텐츠 작가<br/>post.md · publish.md"]
-        writer --> designer["④ designer · 에디토리얼 디자이너<br/>부품 정리 · images.md"]
-        designer --> lint1["자동 검사 (스크립트)"]
-        lint1 --> editor["⑤ editor · 교열 기자<br/>editor-notes.md"]
-        editor --> lint2{"검사 오류<br/>남았나?"}
-        lint2 -- "예" --> editor2["editor 한 번 더"]
-        editor2 --> reader
-        lint2 -- "아니오" --> reader["⑥ reader · 독자 테스터<br/>reader-test.md"]
-        reader --> pass{"독자 테스트<br/>통과?"}
-        pass -- "FAIL" --> rewrite["writer 고쳐 쓰기<br/>(검사 오류가 있으면 editor)"]
-        rewrite --> final
-        pass -- "PASS" --> final["최종 자동 검사"]
-        final --> commit["posts/ 저장소에 draft 커밋"]
-    end
-
-    commit --> review["👤 post.md 확인·수정"]
-    review --> copy["sh copy-post<br/>검사 → HTML 변환 → 클립보드<br/>preview.html · versions/vN 커밋"]
-    copy --> publish["👤 티스토리에 붙여넣기<br/>이미지 넣기 → 비공개 저장 → 발행"]
-```
+흐름도는 `docs/make_pipeline_svg.py`로 만듭니다. 파이프라인이 바뀌면 이 파일을 고치고 `.venv/bin/python docs/make_pipeline_svg.py`를 실행합니다.
 
 - **스크립트**가 하는 일: 자막 수집, 자동 검사, git 커밋, HTML 변환 (네트워크와 git이 필요한 일)
 - **Codex**가 하는 일: 역할 6개 (분석, 설계, 작성, 디자인, 교정, 독자 테스트). 역할마다 `codex exec`를 따로 실행해 역할이 섞이지 않습니다
@@ -284,6 +264,8 @@ gh repo create <글 전용 리포 이름> --private --source=posts --push
 ```
 auto                         sh auto: 링크 하나로 초안까지 (Codex)
 copy-post                    sh copy-post: 검사 → HTML 복사 → 버전 기록
+docs/
+  make_pipeline_svg.py       README 흐름도(라이트·다크 SVG) 생성
 tools/
   render_post.py             마크다운(+부품 문법) → 티스토리 HTML, 미리보기
   lint_post.py               글쓰기 규칙 자동 검사
@@ -301,7 +283,29 @@ CLAUDE.md                    Claude Code 지침 (AGENTS.md를 불러옴)
 HANDOFF.md                   지금까지의 결정과 현재 상태 (인수인계)
 ```
 
-## 11. 로드맵
+## 11. 함께 쓰는 전역 스킬 (디자인)
+
+이 컴퓨터에는 디자인용 스킬이 전역으로 설치돼 있습니다. Claude Code와 Codex 모두에서 쓸 수 있고, 리포에는 들어 있지 않습니다. 새 컴퓨터에서는 아래 명령으로 다시 설치합니다.
+
+| 스킬 | 하는 일 | 이 프로젝트에서 쓴 곳 |
+|---|---|---|
+| `design-taste-frontend` ([taste-skill](https://github.com/Leonxlnx/taste-skill)) | 뻔한 AI 디자인 대신 근거 있는 디자인, 하우스 규칙 | README 흐름도 재디자인 |
+| `awesome-design-md` ([VoltAgent](https://github.com/voltagent/awesome-design-md)) | 브랜드 87곳의 색·폰트·간격 규칙 모음 | 흐름도 색 (Vercel·Linear) |
+| `agent-browser` ([Vercel](https://github.com/vercel-labs/agent-browser)) | 실제 브라우저로 열고 스크린샷 | 흐름도 렌더링 확인 |
+| `web-design-guidelines` ([Vercel](https://github.com/vercel-labs/agent-skills)) | UI 가이드라인 위반 검사 | 블로그 HTML 검사 → 둥근따옴표, 캡션 대비 개선 |
+| `screenshot-to-code` ([OneWave-AI](https://github.com/OneWave-AI/claude-skills)) | 스크린샷을 코드로 | 아직 안 씀 |
+
+```bash
+npx skills add Leonxlnx/taste-skill -s design-taste-frontend -g -a claude-code codex -y
+npx skills add vercel-labs/agent-skills -s web-design-guidelines -g -a claude-code codex -y
+npx skills add vercel-labs/agent-browser -s agent-browser -g -a claude-code codex -y
+npx skills add OneWave-AI/claude-skills -s screenshot-to-code -g -a claude-code codex -y
+npm i -g agent-browser && agent-browser install
+```
+
+`awesome-design-md`는 스킬이 아니라 파일 모음이라, `~/.agents/skills/awesome-design-md/`에 저장소를 받고 사용법을 적은 `SKILL.md`를 직접 만들어 두었습니다 (`~/.claude/skills`에 링크).
+
+## 12. 로드맵
 
 - [x] 자막 수집, 역할별 글쓰기 파이프라인 (`sh auto`, `/write`, `$write-post`)
 - [x] 재창조 글쓰기 규칙, 주인공 설명 필수, 부품 디자인, 자동 검사, 독자 테스트
