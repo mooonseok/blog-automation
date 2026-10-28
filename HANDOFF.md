@@ -46,6 +46,7 @@ HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘. 읽은 뒤 "4. 현재 상태"�
 | 링크 | 영상 링크·타임스탬프 링크는 넣지 않는다. `@핸들`이나 특수문자는 이름에 링크를 거는 편이 낫다 |
 | 의미 없는 정보 | "영상 기준 pstack 0.15.28의 구성은 다음과 같다" 같은 내부 정보는 빼 달라 |
 | 서식 | 인용 등 티스토리 서식을 다양하게. "연한 파란 배경+굵은 왼쪽 선+회색 글자" 인용 상자는 매우 싫어함. 붙여넣었을 때 깨지는 디자인은 절대 안 됨 |
+| AI 티 | im-not-ai(humanize-korean) 규칙을 글쓰기 단계에서 차용. 단 장문 섞기(E-1)는 숏폼 규칙과 충돌해 제외 |
 | 쓸데없는 말 | 출처의 "현재 배포본의 동작은 별도로 확인하지 않았다" 같은 작성 과정·검증 여부 메타 문장 절대 금지 |
 | 모델 | `sh auto`는 Codex `gpt-6-astra`, 노력 수준 `high` |
 | 긴 설명 | 피치 못하게 길어지면 도식이나 이미지로. 이미지는 생성 프롬프트를 보여 주면 사용자가 직접 생성한다 |
@@ -109,7 +110,11 @@ HANDOFF.md와 AGENTS.md를 끝까지 읽어 줘. 읽은 뒤 "4. 현재 상태"�
 21. **디자인 스킬 설치와 적용**: 쇼츠(게으른빌더, 「무조건 설치해야하는 클로드 디자인 스킬」)가 소개한 5개를 분석·확인 후 전역 설치 (`~/.agents/skills`, `~/.claude/skills`에 링크). 사용자가 "설치 위치: 전역"을 선택.
     - taste-skill(design-taste-frontend), web-design-guidelines, agent-browser(+CLI·Chrome), screenshot-to-code, awesome-design-md(파일 모음 + 직접 만든 SKILL.md)
     - 적용: README의 mermaid 흐름도("말도 안 되게 허접")를 `docs/make_pipeline_svg.py`가 만드는 라이트·다크 SVG로 교체, agent-browser로 렌더링 확인. web-design-guidelines로 블로그 HTML을 검사해 둥근따옴표 변환과 캡션 색 대비(#6b7684) 반영.
-    - **im-not-ai(humanize-korean, 한국어 AI 티 제거, MIT)**: 사용자가 설치를 원했으나 이 세션의 권한 설정이 외부 코드 설치를 막아 미설치. 설치 명령: `npx skills add epoko77-ai/im-not-ai -s '*' -g -a claude-code codex -y`. 설치 후 editor 단계에 연결할지는 사용자와 정할 일 (스킬이 작업 폴더에 `_workspace/`를 만든다).
+    - **im-not-ai(humanize-korean 외 3개, 한국어 AI 티 제거, MIT)**: 처음엔 권한 설정에 막혔다가 사용자가 허용해 전역 설치. `humanize-scan`으로 `-6` 글을 점검하니 6개 신호 중 4개 발동 (C-11 쉼표, I-4 당위 종결, E-2 종결 반복, E-1 장문 부재).
+22. **im-not-ai를 글쓰기 단계에 차용**: 사용자가 "스크립트 실행할 때 글 작성 단계에서 차용"을 원함.
+    - 다 쓴 뒤 `/humanize`를 따로 돌리지 않는다 (부품 문법이 깨지고, E-1이 문장을 길게 만들어 숏폼 규칙과 충돌, `_workspace/`가 생김).
+    - 대신 writer·editor가 `~/.agents/skills/humanize-korean/references/quick-rules.md`를 읽고 쓰면서 적용. blog-style 8-1장에 우리 스타일에 맞게 바꾼 점(E-1 제외, 부품 예외, D-3)과 신호표를 정리.
+    - `lint_post.py`에 신호 7개 검사 추가: C-11(오류), E-2·I-4·C-8·D-8·D-1·D-3(경고). Codex 샌드박스에서도 규칙집 파일을 읽을 수 있음을 확인.
 
 ## 4. 현재 상태
 
@@ -306,7 +311,8 @@ CSS 주소는 `tools/render_post.py`의 `TISTORY_CSS`에 있습니다. 미리보
 - [x] 2차·3차 개편: 재창조, 부품 디자인, 역할 6개, 자동 검사, 독자 테스트, 주인공 설명 필수
 - [ ] `-6` 글을 실제 티스토리에 붙여넣은 모양 확인 (새 디자인으로는 아직 사용자 확인 전)
 - [ ] 다른 영상으로도 `sh auto` 실행해 보기 (지금까지 pstack 영상 하나로만 검증)
-- [ ] im-not-ai(humanize-korean) 설치 후 editor 단계에 한국어 윤문으로 연결할지 결정
+- [x] im-not-ai 설치, 글쓰기 단계(writer·editor·자동 검사)에 차용
+- [ ] im-not-ai 차용 후 `sh auto`로 새 글을 만들어 AI 티 신호가 줄었는지 확인
 - [ ] `/feedback`: `draft`와 `copy vN`의 차이, 사용자 주석으로 `blog-style` 규칙 학습. 후보 규칙은 2~3편에서 반복될 때만 확정
 - [ ] researcher 팩트체크와 `claims.json`
 - [ ] `/audit`: 정기적으로 예전 글을 재검증하고 빈 주제를 찾아 알림

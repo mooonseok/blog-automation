@@ -283,7 +283,7 @@ CLAUDE.md                    Claude Code 지침 (AGENTS.md를 불러옴)
 HANDOFF.md                   지금까지의 결정과 현재 상태 (인수인계)
 ```
 
-## 11. 함께 쓰는 전역 스킬 (디자인)
+## 11. 함께 쓰는 전역 스킬
 
 이 컴퓨터에는 디자인용 스킬이 전역으로 설치돼 있습니다. Claude Code와 Codex 모두에서 쓸 수 있고, 리포에는 들어 있지 않습니다. 새 컴퓨터에서는 아래 명령으로 다시 설치합니다.
 
@@ -294,12 +294,14 @@ HANDOFF.md                   지금까지의 결정과 현재 상태 (인수인�
 | `agent-browser` ([Vercel](https://github.com/vercel-labs/agent-browser)) | 실제 브라우저로 열고 스크린샷 | 흐름도 렌더링 확인 |
 | `web-design-guidelines` ([Vercel](https://github.com/vercel-labs/agent-skills)) | UI 가이드라인 위반 검사 | 블로그 HTML 검사 → 둥근따옴표, 캡션 대비 개선 |
 | `screenshot-to-code` ([OneWave-AI](https://github.com/OneWave-AI/claude-skills)) | 스크린샷을 코드로 | 아직 안 씀 |
+| `humanize-korean` 외 3개 ([im-not-ai](https://github.com/epoko77-ai/im-not-ai)) | 한국어 AI 티 85개 패턴 진단·윤문 | **`sh auto` 글쓰기 단계** — writer·editor가 규칙집을 읽고 처음부터 AI 티 없이 씀, 자동 검사가 신호 7개 검사 |
 
 ```bash
 npx skills add Leonxlnx/taste-skill -s design-taste-frontend -g -a claude-code codex -y
 npx skills add vercel-labs/agent-skills -s web-design-guidelines -g -a claude-code codex -y
 npx skills add vercel-labs/agent-browser -s agent-browser -g -a claude-code codex -y
 npx skills add OneWave-AI/claude-skills -s screenshot-to-code -g -a claude-code codex -y
+npx skills add epoko77-ai/im-not-ai -s '*' -g -a claude-code codex -y
 npm i -g agent-browser && agent-browser install
 ```
 
