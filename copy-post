@@ -7,7 +7,7 @@
 #   sh copy-post u2oDdU6z       폴더 이름 일부나 유튜브 링크로 글 지정
 #
 # 버전: 현재 post.md를 복사할 때 마지막 버전과 내용이 다르면
-#       versions/vN.md로 저장하고 해당 글 폴더를 git 커밋한다.
+#       versions/vN.md로 저장하고 posts/ 로컬 저장소에 커밋한다.
 set -eu
 
 cd "$(dirname "$0")"
@@ -56,11 +56,24 @@ save_version() {  # $1 글 폴더, $2 발행본 파일, $3 버전 번호
   mkdir -p "$1/versions"
   cp "$2" "$1/versions/v$3.md"
   printf 'v%s\t%s\n' "$3" "$(date '+%Y-%m-%d %H:%M')" >> "$1/versions/log.tsv"
-  if git rev-parse --git-dir >/dev/null 2>&1; then
-    git add "$1"
-    git commit -q -m "copy: $(basename "$1") v$3" -- "$1"
-    git push -q 2>/dev/null || echo "[알림] 커밋은 했지만 푸시 실패. 나중에 git push" >&2
+  name=$(basename "$1")
+  ensure_posts_repo
+  git -C posts add "$name"
+  git -C posts commit -q -m "copy: $name v$3" -- "$name"
+  # posts 저장소에 원격(백업용 비공개 리포 등)을 직접 연결해 둔 경우에만 푸시한다
+  if [ -n "$(git -C posts remote)" ]; then
+    git -C posts push -q 2>/dev/null || echo "[알림] 커밋은 했지만 푸시 실패. 나중에 git -C posts push" >&2
   fi
+}
+
+# 글은 도구 리포와 분리된 posts/ 전용 로컬 저장소에서 버전을 관리한다 (GitHub에 올리지 않음)
+ensure_posts_repo() {
+  [ -d posts/.git ] && return
+  git -C posts init -q -b main
+  for key in user.name user.email; do
+    value=$(git config "$key" || true)
+    if [ -n "$value" ]; then git -C posts config "$key" "$value"; fi
+  done
 }
 
 show_publish_info() {

@@ -12,13 +12,19 @@
 - `.claude/agents/` analyst, writer, editor
 - `.claude/skills/youtube-transcript/` 자막 추출 스크립트
 - `.claude/skills/blog-style/` 문체 규칙. 계속 갱신된다. 변경은 `changelog.md`에 기록
+- `posts/` 글 저장소. 도구 리포에서 `.gitignore`로 제외된 **별도 로컬 git 저장소**다 (원격 없음, GitHub에 올리지 않음)
 - `posts/<YYYY-MM-DD>-<video_id>/` 글 하나당 폴더
   - `meta.json`, `transcript.md` 원재료
   - `analysis.md` 분석, `post.md` 본문, `publish.md` 제목·태그·카테고리, `editor-notes.md` 교정 메모
   - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
 - `copy-post` (`sh copy-post`) 주석을 뺀 본문을 클립보드에 복사하고 버전을 남긴다. 대화형 메뉴가 있으므로 Claude가 대신 실행하지 않고 사용자에게 안내한다
 
-`git log`에서 `draft:` 커밋은 AI 초안, `copy: ... vN` 커밋은 사용자가 실제로 복사한 버전이다. 둘의 차이가 사용자의 수정이다.
+`git -C posts log`에서 `draft:` 커밋은 AI 초안, `copy: ... vN` 커밋은 사용자가 실제로 복사한 버전이다. 둘의 차이가 사용자의 수정이다.
+
+## git 규칙
+
+- 도구 리포(이 폴더의 `git`)에는 도구만 커밋한다. 글 파일은 절대 도구 리포에 커밋하지 않는다.
+- 글 관련 커밋은 모두 `git -C posts ...`로 한다.
 
 ## 규칙
 

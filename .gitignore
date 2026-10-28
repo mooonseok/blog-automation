@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# 글은 posts/ 안의 별도 로컬 저장소에서 관리 (GitHub에 올리지 않음)
+posts/

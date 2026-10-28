@@ -49,9 +49,9 @@ python3 -m venv .venv
 2. **분석** (analyst): 핵심 주장, 검증이 필요한 사실, 자막 오인식 보정, 글 구성안을 정리합니다
 3. **작성** (writer): `blog-style` 스킬에 맞춰 본문과 제목 후보·태그를 씁니다
 4. **교정** (editor): 문장, 구조, 금지 표현을 고치고 판단이 필요한 점을 메모합니다
-5. **기준점 커밋**: `draft: <제목>`으로 커밋합니다. 이후 직접 고친 부분은 이 커밋과 비교해서 찾습니다
+5. **기준점 커밋**: `posts/` 로컬 저장소에 `draft: <제목>`으로 커밋합니다. 이후 직접 고친 부분은 이 커밋과 비교해서 찾습니다
 
-결과는 `posts/<날짜>-<영상ID>/` 폴더에 생깁니다.
+결과는 `posts/<날짜>-<영상ID>/` 폴더에 생깁니다. `posts/`는 GitHub에 올라가지 않습니다 ([글 저장 위치와 백업](#글-저장-위치와-백업) 참고).
 
 | 파일 | 내용 |
 |---|---|
@@ -105,8 +105,7 @@ sh copy-post
 - **예전 버전**: 그 버전을 그대로 복사합니다 (새 버전을 만들지 않음)
 - **다른 글 고르기**: 전체 글 목록에서 고릅니다
 
-새 버전이 저장되면 그 글 폴더만 `copy: <폴더> vN`으로 자동 커밋하고 푸시합니다.
-푸시가 실패해도 커밋은 남습니다. 나중에 `git push`만 하면 됩니다.
+새 버전이 저장되면 `posts/` 로컬 저장소에 `copy: <폴더> vN`으로 자동 커밋합니다. GitHub에는 올리지 않습니다.
 
 특정 글을 바로 지정할 수도 있습니다.
 
@@ -138,8 +137,10 @@ sh copy-post "https://www.youtube.com/watch?v=u2oDdU6z4Bw"
 
 ## 7. 버전 기록 보기
 
+글의 버전 기록은 `posts/` 저장소에 있으므로 `git -C posts`로 봅니다.
+
 ```bash
-git log --oneline -- posts/<글 폴더>
+git -C posts log --oneline -- <글 폴더>
 ```
 
 - `draft: ...` AI가 만든 초안
@@ -148,7 +149,26 @@ git log --oneline -- posts/<글 폴더>
 둘을 비교하면 직접 고친 부분이 나옵니다.
 
 ```bash
-git diff <draft 커밋> <copy 커밋> -- posts/<글 폴더>/post.md
+git -C posts diff <draft 커밋> <copy 커밋> -- <글 폴더>/post.md
+```
+
+## 글 저장 위치와 백업
+
+GitHub 리포에는 **도구만** 올라갑니다. 글은 내 컴퓨터에만 저장됩니다.
+
+| | 도구 리포 (이 폴더) | 글 저장소 (`posts/`) |
+|---|---|---|
+| 내용 | 스크립트, 스킬, 에이전트, 문서 | 자막, 분석, 본문, 버전 |
+| git | GitHub `mooonseok/blog-automation`에 푸시 | 로컬 전용 (원격 없음) |
+| 커밋하는 곳 | 도구를 고칠 때 | `/write`(draft), `sh copy-post`(copy vN) |
+
+`posts/`는 도구 리포의 `.gitignore`에 들어 있어서 실수로 올라갈 일이 없습니다.
+도구를 새로 클론하면 `posts/`는 비어 있고, 첫 `/write`나 `sh copy-post` 때 자동으로 만들어집니다.
+
+**백업이 필요하다면**, 글 전용 비공개 리포를 따로 만들어 `posts/`에 연결하세요. 연결해 두면 `sh copy-post`가 새 버전을 저장할 때 그 리포로 자동 푸시합니다.
+
+```bash
+gh repo create <글 전용 리포 이름> --private --source=posts --push
 ```
 
 ## 8. 문제 해결
@@ -160,7 +180,7 @@ git diff <draft 커밋> <copy 커밋> -- posts/<글 폴더>/post.md
 | 자막을 가져올 수 없음 (종료 코드 2) | 자막이 없는 영상입니다. 음성 인식은 아직 지원하지 않습니다 |
 | `HTTP Error 429` | 유튜브 요청 제한입니다. 몇 분 뒤 다시 시도하세요 |
 | "여러 글이 일치함" | `sh copy-post`에 폴더 이름을 더 길게 입력하세요 |
-| "푸시 실패" | 커밋은 됐습니다. 네트워크와 로그인을 확인한 뒤 `git push`를 실행하세요 |
+| "푸시 실패" (백업 리포를 연결한 경우) | 커밋은 됐습니다. 네트워크와 로그인을 확인한 뒤 `git -C posts push`를 실행하세요 |
 | 붙여넣었는데 마크다운 기호가 그대로 보임 | 편집기를 마크다운 모드로 바꾼 뒤 다시 붙여넣으세요 |
 
 ## 폴더 구조
@@ -171,7 +191,8 @@ git diff <draft 커밋> <copy 커밋> -- posts/<글 폴더>/post.md
   agents/                    analyst, writer, editor
   skills/youtube-transcript/ 자막 추출 스크립트
   skills/blog-style/         문체 규칙 (계속 갱신, changelog.md에 기록)
-posts/<날짜>-<영상ID>/       글 하나당 폴더
+posts/                       글 저장소 (로컬 전용 git, GitHub에 안 올라감)
+  <날짜>-<영상ID>/           글 하나당 폴더
 copy-post                    클립보드 복사 + 버전 기록
 CLAUDE.md                    Claude가 따르는 프로젝트 규칙
 ```

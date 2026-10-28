@@ -28,11 +28,15 @@ argument-hint: <유튜브 URL> [추가 요청]
 `editor` 서브에이전트에게 작업 폴더 경로를 주고 `post.md`를 교정하고 `editor-notes.md`를 쓰게 한다.
 
 ## 5. 기준점 커밋
-작업 폴더만 커밋한다. 이 커밋이 이후 `/feedback`이 "내가 고친 부분"을 찾는 기준점이 된다.
+글은 도구 리포가 아니라 `posts/` 전용 로컬 저장소에 커밋한다 (GitHub에 올리지 않음).
+이 커밋이 이후 `/feedback`이 "내가 고친 부분"을 찾는 기준점이 된다.
 
 ```bash
-git add <작업 폴더> && git commit -m "draft: <제목 후보 1번>"
+# posts/.git이 없으면 먼저: git -C posts init -q -b main
+git -C posts add <폴더 이름> && git -C posts commit -m "draft: <제목 후보 1번>"
 ```
+
+`<폴더 이름>`은 `posts/`를 뺀 이름이다 (예: `2026-10-28-u2oDdU6z4Bw`). 도구 리포(`git` 기본)에는 글을 커밋하지 않는다.
 
 ## 6. 보고
 아래만 짧게 알린다.
