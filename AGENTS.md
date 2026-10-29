@@ -8,7 +8,8 @@
 - 사용자에게 하는 모든 답변은 **한국어**로 쓴다.
 - 사용자가 읽는 문서(README 등)는 `~합니다` 체로 쓴다. 블로그 본문은 평서체 `~다`.
 - 글(`posts/`)은 GitHub에 올리지 않는다. GitHub 리포에는 도구만 올린다.
-- 블로그 글에 영상 링크·타임스탬프 링크를 넣지 않는다.
+- 블로그 글에 영상 링크·타임스탬프 링크와 자동 출처 목록을 넣지 않는다. 원재료 기록은 analysis.md·meta.json에 보관한다.
+- "오늘부터 바로 써먹기/해볼 것" 같은 마무리 행동 과제를 자동으로 붙이지 않는다. 주제를 설명하는 실제 절차·비교는 유지한다.
 - 되돌리기 어려운 작업(강제 푸시, 기록 재작성, 삭제)은 사용자 확인 후에만 한다.
 - 블로그 글은 영상을 재창조하되, **영상의 주인공(도구·개념)이 무엇이고 어떻게 동작하는지는 반드시 설명**한다 (blog-style Q1 필수 요소).
 - 글 디자인은 **티스토리가 지우지 않는 서식만** 쓴다: `color`, `background-color`, `text-align`과 티스토리 자체 서식(`data-ke-*`). flex·border·radius·margin·gradient 등은 붙여넣을 때 지워진다. `render_post.py`의 `sanitize()`가 이를 강제한다.
@@ -49,7 +50,7 @@
 - `auto` (`sh auto`) 유튜브 링크 하나로 초안까지 자동 실행 (Codex CLI 필요)
 - `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
 - `tools/render_post.py` 마크다운(+부품 문법 `:::summary` 등) → 티스토리용 HTML 변환기. 티스토리 자체 서식(data-ke-*)과 글자색·배경색만 쓴다. 티스토리 편집기가 나머지 인라인 스타일(display, border, radius, gradient, margin, word-break 등)을 지우기 때문이며, `sanitize()`가 허용 목록 밖의 스타일을 미리 지운다. `--preview`는 미리보기 페이지
-- `tools/lint_post.py` blog-style 규칙 자동 검사 (메타 문장, 해요체, 문단 길이, 영상 링크, 필수 부품, 출처 형식, 이미지)
+- `tools/lint_post.py` blog-style 규칙 자동 검사 (메타 문장, 해요체, 문단 길이, 영상 링크, 필수 부품, 불필요한 마무리 섹션, 이미지)
 - `tools/set_clipboard_html.js` 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣는다 (macOS)
 
 `git -C posts log`에서 `draft:` 커밋은 AI 초안, `copy: ... vN` 커밋은 사용자가 실제로 복사한 버전이다. 둘의 차이가 사용자의 수정이다.

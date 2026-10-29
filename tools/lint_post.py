@@ -201,11 +201,14 @@ def lint(post_path):
 
         if line.startswith("## "):
             flush()
-            in_source = line[3:].strip() == "출처"
+            heading = line[3:].strip()
+            in_source = heading in ("출처", "참고자료", "참고 자료")
+            if in_source:
+                err(i, "발행본에 자동 출처 목록을 넣지 않는다. 근거는 analysis.md·meta.json에 보관한다")
+            if re.match(r"오늘부터\s*(바로\s*)?(써먹기|해\s*볼|해볼)", heading):
+                err(i, "마무리 행동 과제를 넣지 않는다. 주제에 맞는 결론으로 끝낸다")
             continue
         if in_source:
-            if no_comment and not re.match(r"^- 영상: .+, 「.+」 \(\d{4}-\d{2}-\d{2}\)$", no_comment):
-                err(i, "출처에는 '- 영상: 채널명, 「제목」 (YYYY-MM-DD)' 한 줄만 쓴다")
             continue
 
         if not no_comment:
@@ -230,10 +233,6 @@ def lint(post_path):
         err(len(lines), f":::{comp_name} 부품이 ':::'로 닫히지 않았다")
     if "summary" not in comps:
         err(1, ":::summary (한눈에 보기)가 없다")
-    if "checklist" not in comps:
-        warn(1, ":::checklist (바로 써먹기)가 없다")
-    if "## 출처" not in [l.strip() for l in lines]:
-        err(len(lines), "## 출처 섹션이 없다")
     if not BODY_MIN <= body_chars <= BODY_MAX:
         warn(1, f"본문이 약 {body_chars}자다. {BODY_MIN}~{BODY_MAX}자를 목표로 한다")
 

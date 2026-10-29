@@ -87,6 +87,19 @@ CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=medium sh auto "https://youtu.be/..."
 
 역할 정의는 `.claude/agents/<역할>.md`, 글쓰기 규칙은 `.claude/skills/blog-style/SKILL.md`, 기준 예시는 `.claude/skills/blog-style/examples/pstack-example.md`입니다.
 
+### 글의 마무리와 이미지 자동화 상태
+
+영상 주제를 새 글로 풀어 쓰며, 자동 출처 목록과 “오늘부터 바로 써먹기/해볼 것” 섹션을 붙이지 않습니다. 본문 설명에 필요한 절차나 비교는 유지합니다. 영상 정보와 근거는 내부 파일에 남습니다.
+
+현재 스크립트는 이미지의 위치·설명·프롬프트(`images.md`)까지 만듭니다. 이미지 생성·호스팅·본문 URL 삽입은 아직 구현하지 않았습니다.
+
+자동화 구현 권장안은 **글 완성 → 주제 일러스트 생성 → 필요하면 SVG 도식의 PNG 렌더링 → 이미지 호스팅 업로드 → 본문 이미지 주소 연결 → HTML 복사**입니다.
+
+- 이미지 생성: Codex 내장 생성 기능을 먼저 검증할 수 있습니다. 현재 설치된 CLI는 `image_generation` 기능이 활성화돼 있지만 `codex exec`에서의 실제 생성·저장 성공은 미검증입니다. 반복 실행의 안정성이 우선이면 별도 키를 쓰는 Image API가 적합합니다 ([공식 안내](https://learn.chatgpt.com/docs/image-generation), [API 가이드](https://developers.openai.com/api/docs/guides/image-generation)).
+- 글자·화살표가 정확해야 하는 설명 도식은 SVG로 만들고 PNG로 렌더링합니다. 대표 일러스트와 도식을 합해 글당 최대 2장으로 제한합니다.
+- 티스토리에 붙여넣을 이미지는 공개 HTTPS 주소가 필요합니다. 로컬 파일과 Base64 삽입에 의존하지 않습니다. Cloudinary 업로드 API는 파일을 받고 `secure_url`을 반환하므로 연결하기 편합니다 ([공식 안내](https://cloudinary.com/documentation/upload_images)). 외부 이미지 주소가 실제 티스토리 저장 후에도 유지되는지는 시범 글로 확인해야 합니다.
+- 권장 운영 방식: 프롬프트·모델·크기가 같으면 기존 파일 재사용, 생성 재시도 횟수 제한, 실패한 이미지는 자리만 남기고 글 생성 완료. 이미지 생성 API와 호스팅 비용·인증은 글쓰기 CLI 구독과 별도로 확인해야 합니다.
+
 ### 결과 파일
 
 결과는 `posts/<날짜>-<영상ID>/` 폴더에 생깁니다. `posts/`는 GitHub에 올라가지 않습니다 (8장).
@@ -134,7 +147,7 @@ CODEX_MODEL=gpt-6.1-sol CODEX_EFFORT=medium sh auto "https://youtu.be/..."
 | 용어 / 팁 / 주의 | `:::term`, `:::tip`, `:::warn` | 색 라벨이 있는 박스 |
 | 발언 인용 | `:::quote 화자` | 세로선 (인용 style2) |
 | 번호 단계 | `:::steps` 줄마다 `제목 \| 설명` | ①②③ 번호 줄 |
-| 체크리스트 | `:::checklist` 줄마다 `- 행동` | ☐ 체크 줄 |
+| 체크리스트 (선택) | `:::checklist` 줄마다 `- 항목` | ☐ 본문 점검 기준. 마무리 행동 과제는 붙이지 않습니다 |
 | Q 소제목 | `## Q1. 질문?` | 파란 Q1. + 소제목 |
 | 이미지 자리 | `[[이미지 1]]` | 안내 박스 (붙여넣은 뒤 실제 이미지로 바꿈) |
 | 표 | 마크다운 표 | 티스토리 표 (style11) |
