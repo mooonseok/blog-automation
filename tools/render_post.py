@@ -8,7 +8,7 @@
   - 상자·인용은 티스토리 인용 서식(blockquote data-ke-style 1~3), 표는 표 서식(data-ke-style),
     문단은 data-ke-size, 간격은 빈 문단(&nbsp;)으로 만들고
   - 인라인 스타일은 ALLOWED_STYLES만 쓴다. 마지막에 sanitize()가 나머지를 지우므로
-    미리보기가 곧 티스토리에서 보일 모습이다.
+    실제 스킨 CSS로 미리 확인한다. 저장 후 편집기가 서식을 바꿀 수 있어 실제 글 확인은 별도로 필요하다.
 
 부품 문법 (post.md 안에서 사용):
   :::summary [라벨]      한눈에 보기 상자. 첫 줄 = 핵심 한 문장, "- " = 체크 항목, "? " = 이 글에서 답할 질문
@@ -51,11 +51,11 @@ TISTORY_CSS = [
 ]
 
 
-def P(content, size=16):
+def P(content, size=18):
     return f'<p data-ke-size="size{size}">{content}</p>'
 
 
-SPACER = P("&nbsp;")
+SPACER = P("&nbsp;", 16)
 
 
 def color(text, fg, bg=None):
@@ -85,33 +85,33 @@ def summary(label, lines):
     title = next((l for l in lines if not l.startswith(("- ", "? "))), "")
     checks = [l[2:] for l in lines if l.startswith("- ")]
     questions = [l[2:] for l in lines if l.startswith("? ")]
-    paras = [P(chip(label or "📌 한눈에 보기"), 14), SPACER]
+    paras = [P(color(f"<b>{htmllib.escape(label or '한눈에 보기')}</b>", ACCENT), 18)]
     if title:
-        paras += [P(color(f"<b>{inline(title)}</b>", INK), 18), SPACER]
+        paras += [f'<h3 data-ke-size="size23">{color(f"<b>{inline(title)}</b>", INK)}</h3>']
     paras += [P(f'{color("<b>✓</b>", ACCENT)}&nbsp; {color(inline(c), BODY)}') for c in checks]
     if questions:
-        paras += [SPACER, P(color("<b>이 글에서 답할 질문</b>", CAPTION), 14)]
-        paras += [P(color(f"Q{i + 1}. {inline(q)}", SUB), 14) for i, q in enumerate(questions)]
+        paras += [SPACER, P(color("<b>이 글에서 답할 질문</b>", SUB), 18)]
+        paras += [P(color(f"Q{i + 1}. {inline(q)}", SUB), 18) for i, q in enumerate(questions)]
     return quote_box("style3", paras)
 
 
 def takeaway(label, lines):
     return quote_box("style1", [
-        P(chip(label or "한 줄 정리"), 14),
+        P(color(f"<b>{htmllib.escape(label or '한 줄 정리')}</b>", ACCENT), 18),
         P(color(f"<b>{inline(' '.join(lines))}</b>", INK), 18),
     ])
 
 
 def note(kind, label, lines):
     default, fg = NOTES[kind]
-    return quote_box("style3", [P(color(f"<b>{htmllib.escape(label or default)}</b>", fg), 14)]
+    return quote_box("style3", [P(color(f"<b>{htmllib.escape(label or default)}</b>", fg), 18)]
                      + [P(color(inline(l), BODY)) for l in lines])
 
 
 def quote(speaker, lines):
     paras = [P(color(f"<b>{inline(' '.join(lines))}</b>", INK), 18)]
     if speaker:
-        paras.append(P(color(f"— {htmllib.escape(speaker)}", CAPTION), 14))
+        paras.append(P(color(f"— {htmllib.escape(speaker)}", CAPTION), 16))
     return quote_box("style2", paras)
 
 
@@ -127,7 +127,7 @@ def steps(_label, lines):
 
 
 def checklist(label, lines):
-    head = [P(color(f"<b>{htmllib.escape(label)}</b>", SUB), 14)] if label else []
+    head = [P(color(f"<b>{htmllib.escape(label)}</b>", SUB), 18)] if label else []
     return "".join(head + [P(f'{color("<b>☐</b>", ACCENT)}&nbsp; {inline(l[2:])}') for l in lines if l.startswith("- ")])
 
 
@@ -171,7 +171,7 @@ def tistory_table(match):
     out = []
     for r, row in enumerate(rows):
         cells = re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", row, flags=re.S)
-        tds = "".join(f"<td>{f'<b>{c}</b>' if (r == 0 or i == 0) and c else c}</td>" for i, c in enumerate(cells))
+        tds = "".join(f"<td>{P(f'<b>{c}</b>' if (r == 0 or i == 0) and c else c, 18)}</td>" for i, c in enumerate(cells))
         out.append(f"<tr>{tds}</tr>")
     return (
         f'<table style="border-collapse: collapse; width: 100%;" data-ke-align="alignLeft" data-ke-style="{TABLE_STYLE}">'
@@ -182,7 +182,7 @@ def tistory_table(match):
 def style_blocks(html):
     html = re.sub(r"<h2>Q(\d+)\.\s*(.*?)</h2>", lambda m: f'<h2 data-ke-size="size26">{color(f"Q{m.group(1)}.", ACCENT)} {m.group(2)}</h2>', html)
     html = html.replace("<h2>", '<h2 data-ke-size="size26">').replace("<h3>", '<h3 data-ke-size="size23">')
-    html = html.replace("<p>", '<p data-ke-size="size16">')
+    html = html.replace("<p>", '<p data-ke-size="size18">')
     html = html.replace("<ul>", '<ul style="list-style-type: disc;" data-ke-list-type="disc">')
     html = html.replace("<ol>", '<ol style="list-style-type: decimal;" data-ke-list-type="decimal">')
     html = html.replace("<strong>", "<b>").replace("</strong>", "</b>")
@@ -238,7 +238,7 @@ def render(md_text):
     md_text, stash = extract_components(md_text)
     html = markdown.markdown(md_text, extensions=["tables", "fenced_code", "sane_lists"])
     html = style_blocks(html)
-    html = insert_spacers(re.sub(r'<p data-ke-size="size16">@@C(\d+)@@</p>', r"@@C\1@@", html))
+    html = insert_spacers(re.sub(r'<p data-ke-size="size18">@@C(\d+)@@</p>', r"@@C\1@@", html))
     html = re.sub(r"@@C(\d+)@@", lambda m: stash[int(m.group(1))], html)
     return sanitize(smart_typography(html))
 
