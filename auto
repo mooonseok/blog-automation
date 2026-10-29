@@ -108,6 +108,9 @@ echo "[검사] 최종 자동 검사"
 if lint; then status="통과"; else status="오류 남음"; fi
 sed 's/^/  /' "$dir/logs/lint.txt"
 
+# 생성 API 없이 designer가 만든 SVG를 로컬 PNG로 변환한다.
+.venv/bin/python tools/render_images.py "$dir"
+
 # posts/ 저장소에 draft 커밋 (이후 사용자가 고친 부분을 찾는 기준점)
 if [ ! -d posts/.git ]; then
   git -C posts init -q -b main
@@ -124,7 +127,7 @@ elapsed=$(( $(date +%s) - started ))
 echo
 echo "완료: $dir  (자동 검사 $status, $((elapsed / 60))분 $((elapsed % 60))초)"
 grep -q "결과: PASS" "$dir/reader-test.md" && echo "독자 테스트: 통과" || echo "독자 테스트: 실패 → $dir/reader-test.md 확인"
-if [ -s "$dir/images.md" ]; then echo "이미지 필요: $dir/images.md 의 프롬프트로 생성"; fi
+if [ -s "$dir/images.md" ]; then echo "이미지: $dir/images/ 파일과 $dir/images.md 확인 후 티스토리에 업로드"; fi
 echo "다음 할 일"
 echo "  1. 미리보기·수정: $dir/post.md"
 echo "  2. 복사: sh copy-post"

@@ -13,7 +13,8 @@
 - 되돌리기 어려운 작업(강제 푸시, 기록 재작성, 삭제)은 사용자 확인 후에만 한다.
 - 블로그 글은 영상을 재창조하되, **영상의 주인공(도구·개념)이 무엇이고 어떻게 동작하는지는 반드시 설명**한다 (blog-style Q1 필수 요소).
 - 글 디자인은 **티스토리가 지우지 않는 서식만** 쓴다: `color`, `background-color`, `text-align`과 티스토리 자체 서식(`data-ke-*`). flex·border·radius·margin·gradient 등은 붙여넣을 때 지워진다. `render_post.py`의 `sanitize()`가 이를 강제한다.
-- 이미지 자동화에 생성 API 외의 유료 외부 도구·호스팅을 추가하지 않는다. 이미지 파일은 posts/ 아래 로컬에 저장하고 티스토리 기본 업로드를 사용한다.
+- 이미지 기본 경로는 생성 API 없이 SVG 코드 작성 → 로컬 PNG 변환이다. 유료 외부 도구·호스팅을 추가하지 않는다. 파일은 posts/ 아래에 보관하고 티스토리 기본 업로드를 사용한다(현재 수동).
+- 표·요약·도식은 네이비 팔레트로 통일한다: #18263d, #22456b, #e9f0fa, #f4f7fb.
 - 작성 과정·검증 여부에 대한 메타 문장("확인하지 않았다" 등)은 글에 절대 넣지 않는다.
 
 ## 파이프라인
@@ -25,7 +26,7 @@
 | analyst | 기술 리서처 | `analysis.md` (자막 보정, 주장·근거·용어) |
 | curator | IT 매거진 편집장 | `outline.md` (핵심 1개, 질문 3개, 버릴 것, 섹션 설계) |
 | writer | 숏폼 교육 콘텐츠 작가 | `post.md`, `publish.md` |
-| designer | 에디토리얼 디자이너 | 부품 배치, `images.md` (이미지 생성 프롬프트) |
+| designer | 에디토리얼 디자이너 | 부품 배치, `images.md`, `images/image-N.svg` (로컬 이미지) |
 | editor | 교열 기자 | 메타 문장·금지 표현 삭제, 문단 쪼개기, `editor-notes.md` |
 | reader | 영상을 안 본 주니어 개발자 | `reader-test.md` (PASS/FAIL) |
 
@@ -45,12 +46,13 @@
 - `posts/` 글 저장소. 도구 리포에서 `.gitignore`로 제외된 **별도 로컬 git 저장소**다 (원격 없음)
 - `posts/<YYYY-MM-DD>-<video_id>/` 글 하나당 폴더
   - `meta.json`, `transcript.md` 원재료
-  - `analysis.md` 분석, `outline.md` 설계, `post.md` 본문, `publish.md` 제목·태그, `images.md` 이미지 프롬프트, `editor-notes.md` 교정 메모, `reader-test.md` 독자 테스트, `logs/` 역할별 로그
+  - `analysis.md` 분석, `outline.md` 설계, `post.md` 본문, `publish.md` 제목·태그, `images.md` 이미지 위치·캡션, `editor-notes.md` 교정 메모, `reader-test.md` 독자 테스트, `logs/` 역할별 로그
   - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
   - `preview.html` 티스토리 스킨 CSS를 입힌 미리보기 (git 제외)
 - `auto` (`sh auto`) 유튜브 링크 하나로 초안까지 자동 실행 (Codex CLI 필요)
 - `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
 - `tools/render_post.py` 마크다운(+부품 문법 `:::summary` 등) → 티스토리용 HTML 변환기. 티스토리 자체 서식(data-ke-*)과 글자색·배경색만 쓴다. 티스토리 편집기가 나머지 인라인 스타일(display, border, radius, gradient, margin, word-break 등)을 지우기 때문이며, `sanitize()`가 허용 목록 밖의 스타일을 미리 지운다. `--preview`는 미리보기 페이지
+- `tools/render_images.py` designer가 만든 images/image-N.svg를 무료 로컬 도구 rsvg-convert로 PNG 변환 (API·네트워크 없음)
 - `tools/lint_post.py` blog-style 규칙 자동 검사 (메타 문장, 해요체, 문단 길이, 영상 링크, 필수 부품, 불필요한 마무리 섹션, 이미지)
 - `tools/set_clipboard_html.js` 클립보드에 서식(HTML)과 소스(텍스트)를 함께 넣는다 (macOS)
 

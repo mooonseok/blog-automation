@@ -5,21 +5,21 @@
     .venv/bin/python docs/make_pipeline_svg.py
 
 디자인: taste-skill 하우스 규칙(그라데이션·그림자·얇은 테두리 상자·이모지·번호 매기기 없음, 톤 차이로 면 구분)과
-awesome-design-md의 Vercel(라이트)·Linear(다크) 토큰, 블로그 강조색 #3d62ce.
+awesome-design-md의 Vercel(라이트)·Linear(다크) 토큰, 블로그 강조색 #22456b.
 """
 from html import escape
 from pathlib import Path
 
 THEMES = {
     "light": {
-        "canvas": "#eef0f4", "script": "#ffffff", "codex": "#e8edfb", "human": "#171717",
+        "canvas": "#eef0f4", "script": "#ffffff", "codex": "#e9f0fa", "human": "#171717",
         "ink": "#171717", "body": "#4d4d4d", "mute": "#888888", "on_human": "#ffffff", "on_human_mute": "#b4b4b4",
-        "accent": "#3d62ce", "line": "#b8bcc4",
+        "accent": "#22456b", "line": "#b8bcc4",
     },
     "dark": {
         "canvas": "#0f1011", "script": "#1c1d20", "codex": "#222a4a", "human": "#f7f8f8",
         "ink": "#f7f8f8", "body": "#c9ced6", "mute": "#8a8f98", "on_human": "#0f1011", "on_human_mute": "#5c6068",
-        "accent": "#8b9cf6", "line": "#4a4e57",
+        "accent": "#93b1d0", "line": "#4a4e57",
     },
 }
 
@@ -58,7 +58,7 @@ H = ROW_Y[-1] + NODE_H + 52
 RESULTS = [
     ("post.md", "본문, 직접 고치는 파일"),
     ("publish.md", "제목 후보 · 태그"),
-    ("images.md", "이미지 생성 프롬프트"),
+    ("images.md", "이미지 위치 · 캡션"),
     ("reader-test.md", "독자 테스트 결과"),
     ("preview.html", "붙여넣을 모양 미리보기"),
 ]

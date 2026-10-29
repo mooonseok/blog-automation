@@ -31,18 +31,22 @@ import sys
 
 import markdown
 
-ACCENT = "#3d62ce"
-INK = "#191f28"
-BODY = "#333d4b"
-SUB = "#4e5968"
-CAPTION = "#6b7684"   # 흰 바탕 대비 4.5:1 이상 (작은 글씨 접근성 기준)
-HIGHLIGHT = "#dbe3fa"
-CHIP_BG = "#eceffa"
+# 네이비 테마: 본문·부품·표가 같은 팔레트를 공유한다.
+ACCENT = "#22456b"
+INK = "#18263d"
+BODY = "#263244"
+SUB = "#475569"
+CAPTION = "#64748b"
+HIGHLIGHT = "#dce8f6"
+CHIP_BG = "#e9f0fa"
+TABLE_HEADER = INK
+TABLE_FIRST_COLUMN = CHIP_BG
+TABLE_STRIPE = "#f4f7fb"
 
 ALLOWED_STYLES = {"color", "background-color", "text-align", "list-style-type", "border-collapse", "width"}
-TABLE_STYLE = "style11"
+TABLE_STYLE = "style15"
 NUMBERS = "①②③④⑤⑥⑦⑧⑨⑩"
-NOTES = {"tip": ("💡 TIP", "#1a7f37"), "warn": ("⚠️ 주의", "#9a6700"), "term": ("ℹ️ 용어", SUB)}
+NOTES = {"tip": ("💡 TIP", ACCENT), "warn": ("⚠️ 주의", INK), "term": ("ℹ️ 용어", SUB)}
 
 TISTORY_CSS = [
     "https://edge.daumcdn.net/tistory/tistory-admin/userblog/userblog-d688a284249d4b0687a7ec6021c32913af1f92cf/static/style/content.css",
@@ -171,8 +175,13 @@ def tistory_table(match):
     out = []
     for r, row in enumerate(rows):
         cells = re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", row, flags=re.S)
-        tds = "".join(f"<td>{P(f'<b>{c}</b>' if (r == 0 or i == 0) and c else c, 18)}</td>" for i, c in enumerate(cells))
-        out.append(f"<tr>{tds}</tr>")
+        tds = []
+        for i, c in enumerate(cells):
+            bg = TABLE_HEADER if r == 0 else TABLE_FIRST_COLUMN if i == 0 else TABLE_STRIPE if r % 2 else "#ffffff"
+            fg = "#ffffff" if r == 0 else ACCENT if i == 0 else BODY
+            text = f"<b>{c}</b>" if (r == 0 or i == 0) and c else c
+            tds.append(f'<td style="background-color: {bg};">{P(color(text, fg), 18)}</td>')
+        out.append(f"<tr>{''.join(tds)}</tr>")
     return (
         f'<table style="border-collapse: collapse; width: 100%;" data-ke-align="alignLeft" data-ke-style="{TABLE_STYLE}">'
         f"<tbody>{''.join(out)}</tbody></table>"

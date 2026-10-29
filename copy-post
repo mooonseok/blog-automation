@@ -166,7 +166,7 @@ copy_current() {
   if [ -n "$pending" ]; then echo "[주의] 확인 필요 표시가 남은 줄: $pending" >&2; fi
   images=$(grep -c '^\[\[이미지' "$dir/post.md" || true)
   if [ "$images" -gt 0 ]; then
-    echo "[이미지] ${images}개 필요. 프롬프트: $dir/images.md → 생성 후 붙여넣은 글의 '🖼 이미지 N 자리' 상자에 넣고 상자는 지우기"
+    echo "[이미지] ${images}개 필요. 파일: $dir/images/ · 위치/캡션: $dir/images.md → 티스토리 업로드 후 붙여넣은 글의 '🖼 이미지 N 자리' 상자에 넣고 상자는 지우기"
   fi
   show_publish_info "$dir"
 }
