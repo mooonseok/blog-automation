@@ -86,7 +86,7 @@ run_role curator "2/6 설계" "만들 파일: $dir/outline.md"
 need outline.md
 run_role writer "3/6 작성" "만들 파일: $dir/post.md, $dir/publish.md"
 need post.md publish.md
-run_role designer "4/6 디자인" "고칠 파일: $dir/post.md, 이미지가 필요하면 만들 파일: $dir/images.md와 $dir/images/image-N.svg"
+run_role designer "4/6 디자인" "고칠 파일: $dir/post.md. 간단한 전후 변화는 본문 :::motion으로 만든다. 별도 그림이 필요한 경우에만 $dir/images.md와 $dir/images/image-N.svg를 만든다."
 need post.md
 
 lint || true
@@ -136,4 +136,4 @@ else
   echo "[알림] 미리보기를 만들지 못했습니다. 본문은 저장했습니다." >&2
 fi
 echo "  2. 복사: sh copy-post"
-echo "  3. 티스토리 글쓰기 → HTML 모드에서 붙여넣기 → 이미지 자리 교체 → 카테고리 AI → 비공개 저장 후 확인"
+echo "  3. 티스토리 글쓰기 → HTML 모드에서 붙여넣기 → 카테고리 AI → 비공개 저장 후 확인"

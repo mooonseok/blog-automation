@@ -1,0 +1,51 @@
+/* 블로그 본문의 전후 비교 도식에만 적용합니다. */
+.ba-motion {
+  padding: 1em 1.2em;
+  background: #f4f7fb;
+  color: #18263d;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.ba-motion > p + p { margin-top: .65em; }
+.ba-motion > p > b { color: #22456b; }
+.ba-motion-chart { position: relative; width: 96px; height: 68px; }
+.ba-motion-chart i {
+  display: block;
+  position: absolute;
+  left: 12px;
+  top: 6px;
+  width: 68px;
+  height: 4px;
+  background: #22456b;
+  transform-origin: left center;
+  transform: translateY(var(--row));
+}
+.ba-motion-chart i::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #22456b;
+}
+.ba-motion-chart i:nth-child(1) { --row: 4px;  --bar: translate(0, 48px) rotate(-90deg) scale(.45, 1.6); }
+.ba-motion-chart i:nth-child(2) { --row: 23px; --bar: translate(26px, 48px) rotate(-90deg) scale(.75, 1.6); }
+.ba-motion-chart i:nth-child(3) { --row: 42px; --bar: translate(52px, 48px) rotate(-90deg) scale(.58, 1.6); }
+@keyframes ba-chart-list {
+  0%, 20%, 100% { transform: var(--bar); }
+  40%, 85% { transform: translateY(var(--row)); }
+}
+@keyframes ba-list-dot {
+  0%, 30%, 98%, 100% { opacity: 0; }
+  40%, 85% { opacity: 1; }
+}
+@keyframes ba-emphasize {
+  0%, 22%, 100% { background-color: transparent; }
+  40%, 85% { background-color: #dce8f6; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ba-motion > p:last-child > b { animation: ba-emphasize 6s ease infinite; }
+  .ba-motion-chart i { animation: ba-chart-list 6s cubic-bezier(.33, 0, .17, 1) infinite; }
+  .ba-motion-chart i::before { animation: ba-list-dot 6s ease infinite; }
+}

@@ -16,6 +16,7 @@
   :::tip / :::warn / :::term [라벨]   팁·주의·용어 상자
   :::quote 화자          발언 인용 (세로선)
   :::steps               "제목 | 설명" 줄마다 번호 단계
+  :::motion [chart-list]  전후를 설명하는 "이름 | 내용" 두 줄. 스킨 CSS로 반복 재생
   :::checklist [라벨]    "- " 줄마다 체크 항목
   :::                    부품 끝
   ## Q1. 질문           소제목 앞에 파란 Q1.
@@ -125,13 +126,25 @@ def steps(_label, lines):
     return "".join(rows)
 
 
+def motion(variant, lines):
+    rows = []
+    for line in lines:
+        label, sep, detail = line.partition("|")
+        content = f"<b>{htmllib.escape(label.strip())}</b> · {htmllib.escape(detail.strip())}" if sep else htmllib.escape(line)
+        rows.append(P(content))
+    sketch = ""
+    if variant == "chart-list":
+        sketch = '<div aria-hidden="true" class="ba-motion-chart"><i></i><i></i><i></i></div>'
+    return '<div class="ba-motion">' + sketch + "".join(rows) + "</div>"
+
+
 def checklist(label, lines):
     head = [P(color(f"<b>{htmllib.escape(label)}</b>", SUB), 18)] if label else []
     return "".join(head + [P(f'{color("<b>☐</b>", ACCENT)}&nbsp; {inline(l[2:])}') for l in lines if l.startswith("- ")])
 
 
 COMPONENTS = {
-    "summary": summary, "takeaway": takeaway, "quote": quote, "steps": steps, "checklist": checklist,
+    "summary": summary, "takeaway": takeaway, "quote": quote, "steps": steps, "checklist": checklist, "motion": motion,
     "tip": lambda a, l: note("tip", a, l), "warn": lambda a, l: note("warn", a, l), "term": lambda a, l: note("term", a, l),
 }
 
@@ -284,12 +297,16 @@ def render(md_text, image_slots=None):
 
 def preview_page(body):
     links = "\n".join(f'<link rel="stylesheet" href="{href}">' for href in TISTORY_CSS)
+    motion_css = ""
+    if 'class="ba-motion"' in body:
+        motion_css = Path(__file__).with_name("tistory-motion.css").read_text(encoding="utf-8")
     return f"""<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>미리보기 (티스토리 스킨 CSS 적용)</title>
 {links}
 <style>
+{motion_css}
 body {{ max-width: 760px; margin: 40px auto; padding: 0 20px; background: #fff; }}
 #article-view .post-preview-figure {{ margin: 0 0 24px; }}
 #article-view .post-preview-figure img {{ display: block; max-width: 100%; height: auto; }}
