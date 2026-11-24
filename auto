@@ -9,7 +9,7 @@
 #
 # 흐름 (역할마다 codex exec를 따로 실행해 역할이 섞이지 않게 한다):
 #   수집 → analyst → curator → writer → designer → 자동 검사 → editor → reader → (실패 시 writer 고쳐 쓰기)
-#   → 최종 검사 → posts/ 저장소에 draft 커밋
+#   → 최종 검사·PNG 변환 → posts/ 저장소에 draft 커밋 → HTML 미리보기
 # codex exec의 workspace-write 샌드박스는 네트워크를 막고 .git을 읽기 전용으로 두므로,
 # 수집과 커밋은 이 스크립트가 하고 Codex는 글 파일만 쓴다. 역할별 로그는 글 폴더의 logs/에 남는다.
 set -eu
@@ -86,7 +86,7 @@ run_role curator "2/6 설계" "만들 파일: $dir/outline.md"
 need outline.md
 run_role writer "3/6 작성" "만들 파일: $dir/post.md, $dir/publish.md"
 need post.md publish.md
-run_role designer "4/6 디자인" "고칠 파일: $dir/post.md, 필요하면 만들 파일: $dir/images.md"
+run_role designer "4/6 디자인" "고칠 파일: $dir/post.md, 이미지가 필요하면 만들 파일: $dir/images.md와 $dir/images/image-N.svg"
 need post.md
 
 lint || true
@@ -99,7 +99,7 @@ fi
 run_role reader "6/6 독자 테스트" "읽을 파일은 $dir/post.md 하나뿐이다. 다른 파일은 열지 않는다. 만들 파일: $dir/reader-test.md"
 need reader-test.md
 if grep -q "결과: FAIL" "$dir/reader-test.md"; then
-  run_role writer "6/6 고쳐 쓰기" "독자 테스트가 FAIL이다. $dir/reader-test.md의 막힌 곳을 해결하도록 $dir/post.md를 고쳐 쓴다. outline.md의 구조는 유지한다."
+  run_role writer "6/6 고쳐 쓰기" "독자 테스트가 FAIL이다. $dir/reader-test.md의 막힌 곳을 해결하도록 $dir/post.md를 고쳐 쓴다. outline.md의 구조는 유지한다. 기존 이미지가 설명하는 관계를 바꾸면 그 이미지 자리도 제거한다."
   lint || run_role editor "6/6 교정 (고쳐 쓴 글)" "자동 검사 오류를 고친다: $dir/logs/lint.txt"
 fi
 
@@ -120,7 +120,7 @@ if [ ! -d posts/.git ]; then
   done
 fi
 title=$(sed -n 's/^  1\. //p' "$dir/publish.md" | head -1)
-git -C posts add "$name"
+git -C posts add "$name" ':(exclude,glob)**/*preview.html'
 git -C posts commit -q -m "draft: ${title:-$name}" -- "$name"
 
 elapsed=$(( $(date +%s) - started ))
@@ -129,6 +129,11 @@ echo "완료: $dir  (자동 검사 $status, $((elapsed / 60))분 $((elapsed % 60
 grep -q "결과: PASS" "$dir/reader-test.md" && echo "독자 테스트: 통과" || echo "독자 테스트: 실패 → $dir/reader-test.md 확인"
 if [ -s "$dir/images.md" ]; then echo "이미지: $dir/images/ 파일과 $dir/images.md 확인 후 티스토리에 업로드"; fi
 echo "다음 할 일"
-echo "  1. 미리보기·수정: $dir/post.md"
+if .venv/bin/python tools/render_post.py --preview --post-dir "$dir" < "$dir/post.md" > "$dir/preview.html"; then
+  echo "  1. 미리보기: open $dir/preview.html · 본문 수정: $dir/post.md"
+else
+  echo "  1. 본문 수정: $dir/post.md"
+  echo "[알림] 미리보기를 만들지 못했습니다. 본문은 저장했습니다." >&2
+fi
 echo "  2. 복사: sh copy-post"
-echo "  3. 티스토리 글쓰기 → 붙여넣기(기본모드·HTML 모드 모두 가능) → 이미지 자리 교체 → 카테고리 AI → 비공개 저장 후 확인"
+echo "  3. 티스토리 글쓰기 → HTML 모드에서 붙여넣기 → 이미지 자리 교체 → 카테고리 AI → 비공개 저장 후 확인"
