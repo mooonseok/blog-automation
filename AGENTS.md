@@ -14,7 +14,7 @@
 - 블로그 글은 영상을 재창조하되, **영상의 주인공(도구·개념)이 무엇이고 어떻게 동작하는지는 반드시 설명**한다 (blog-style Q1 필수 요소).
 - 글 디자인은 **티스토리가 지우지 않는 서식만** 쓴다: `color`, `background-color`, `text-align`과 티스토리 자체 서식(`data-ke-*`). flex·border·radius·margin·gradient 등은 붙여넣을 때 지워진다. `render_post.py`의 `sanitize()`가 이를 강제한다.
 - 티스토리에 붙여넣을 때는 글쓰기 상단 메뉴에서 **HTML 모드**를 선택하도록 안내한다. 임시저장 후 미리보기에서 표의 제목 셀과 구분선을 확인한다.
-- 짧은 전후 변화는 designer의 `:::motion`으로 본문에 넣는다. 스킨의 `tools/tistory-motion.css`로 6초마다 반복하며 정지 상태에서도 설명을 읽을 수 있다. 별도 그림은 생성 API 없이 SVG 작성 → 로컬 PNG 변환 후 티스토리 기본 업로드를 사용한다. 파일은 posts/ 아래에 보관한다.
+- 새 글은 정지 HTML 단계나 비교표를 본문에 넣는다. 자동 작성이 끝나면 검사를 통과한 본문을 로컬 클립보드에 복사한다. 브라우저 접근·스킨 설정·이미지 첨부는 필요 없다.
 - 표·요약·도식은 네이비 팔레트로 통일한다: #18263d, #22456b, #e9f0fa, #f4f7fb.
 - 작성 과정·검증 여부에 대한 메타 문장("확인하지 않았다" 등)은 글에 절대 넣지 않는다.
 
@@ -51,7 +51,7 @@
   - `versions/vN.md` 클립보드로 복사한(=발행용) 버전, `versions/log.tsv` 버전별 저장 시각
   - `preview.html` 티스토리 스킨 CSS를 입힌 미리보기 (git 제외)
 - `auto` (`sh auto`) 유튜브 링크 하나로 초안까지 자동 실행 (Codex CLI 필요)
-- `copy-post` (`sh copy-post`) 발행본을 HTML로 바꿔 클립보드에 넣고 버전을 남긴다. 대화형 메뉴가 있으므로 에이전트가 대신 실행하지 않고 사용자에게 안내한다
+- `copy-post`의 기본 메뉴는 사용자가 직접 버전을 선택할 때 쓴다. 자동 작성과 대화 요청은 비대화형 `--ready`를 쓴다.
 - `tools/render_post.py` 마크다운(+부품 문법 `:::summary` 등) → 티스토리용 HTML 변환기. 티스토리 자체 서식(data-ke-*)과 글자색·배경색만 쓴다. 티스토리 편집기가 나머지 인라인 스타일(display, border, radius, gradient, margin, word-break 등)을 지우기 때문이며, `sanitize()`가 허용 목록 밖의 스타일을 미리 지운다. `--preview`는 미리보기 페이지
 - `tools/render_images.py` designer가 만든 images/image-N.svg를 무료 로컬 도구 rsvg-convert로 PNG 변환 (API·네트워크 없음)
 - `tools/lint_post.py` blog-style 규칙 자동 검사 (메타 문장, 해요체, 문단 길이, 영상 링크, 필수 부품, 불필요한 마무리 섹션, 이미지)

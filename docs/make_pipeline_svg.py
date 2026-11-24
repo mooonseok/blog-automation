@@ -40,7 +40,7 @@ ROWS = [
     ],
     [
         ("human", "확인·수정", "post.md 직접 고치기", "", ""),
-        ("script", "sh copy-post", "검사 → HTML → 클립보드", "버전 v1, v2 … 저장", ""),
+        ("script", "자동 복사", "검사 → HTML → 클립보드", "버전 v1, v2 … 저장", ""),
         ("human", "붙여넣기", "티스토리 글쓰기", "HTML 모드에서 붙여넣기", ""),
         ("human", "발행", "카테고리 AI", "비공개로 확인 후 공개", ""),
     ],
@@ -100,7 +100,7 @@ def build(theme):
         f'<path d="M1 1 L9 5 L1 9 z" fill="{t["line"]}"/></marker></defs>',
         f'<rect width="{W}" height="{H}" rx="24" fill="{t["canvas"]}"/>',
         text(M, 74, "유튜브 링크 한 줄이 블로그 글이 되기까지", 28, t["ink"], 700),
-        text(M, 108, "sh auto 〈링크〉 → 약 12~21분 → 내가 확인 → sh copy-post → 티스토리", 15, t["body"]),
+        text(M, 108, "sh auto 〈링크〉 → 약 12~21분 → 자동 복사 → 티스토리 HTML 모드에 붙여넣기", 15, t["body"]),
     ]
     # 범례
     lx = W - M - 360

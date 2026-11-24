@@ -52,6 +52,17 @@ find_post() {
   echo "$matches"
 }
 
+# 본문이 같아도 참조한 PNG나 캡션이 바뀌면 새 버전이다.
+matches_version() (
+  cmp -s "$2" "$1/versions/v$3.md" || exit 1
+  grep -Eq '^[[:space:]]*\[\[이미지[[:space:]]*[0-9]+\]\][[:space:]]*$' "$2" || exit 0
+  compare_dir=$(mktemp -d) || exit 1
+  trap 'rm -rf "$compare_dir"' EXIT
+  .venv/bin/python tools/render_post.py --post-dir "$1" < "$2" > "$compare_dir/current" || exit 1
+  .venv/bin/python tools/render_post.py --post-dir "$1" --version "$3" < "$2" > "$compare_dir/saved" || exit 1
+  cmp -s "$compare_dir/current" "$compare_dir/saved"
+)
+
 save_version() {  # $1 글 폴더, $2 발행본 파일, $3 버전 번호
   mkdir -p "$1/versions"
   cat "$2" > "$1/versions/v$3.md"
@@ -60,10 +71,7 @@ save_version() {  # $1 글 폴더, $2 발행본 파일, $3 버전 번호
   ensure_posts_repo
   git -C posts add "$name" ':(exclude,glob)**/*preview.html'
   git -C posts commit -q -m "copy: $name v$3" -- "$name"
-  # posts 저장소에 원격(백업용 비공개 리포 등)을 직접 연결해 둔 경우에만 푸시한다
-  if [ -n "$(git -C posts remote)" ]; then
-    git -C posts push -q 2>/dev/null || echo "[알림] 커밋은 했지만 푸시 실패. 나중에 git -C posts push" >&2
-  fi
+
 }
 
 # 글은 도구 리포와 분리된 posts/ 전용 로컬 저장소에서 버전을 관리한다 (GitHub에 올리지 않음)
@@ -80,7 +88,13 @@ ensure_posts_repo() {
 to_clipboard() {  # $1 글 폴더, $2 발행본 마크다운 파일, $3 과거 버전 미리보기 경로(선택)
   [ -x .venv/bin/python ] || die ".venv가 없음. README의 설치 단계를 먼저 실행"
   html=$(mktemp)
-  .venv/bin/python tools/render_post.py < "$2" > "$html"
+  post_folder=$1
+  source_md=$2
+  preview_path=${3:-$1/preview.html}
+  selected_version=${4:-}
+  set -- --post-dir "$post_folder"
+  if [ -n "$selected_version" ]; then set -- "$@" --version "$selected_version"; fi
+  .venv/bin/python tools/render_post.py "$@" < "$source_md" > "$html"
   # 티스토리 HTML 모드에서 붙여넣을 소스를 텍스트 형식으로 함께 넣는다
   if ! osascript -l JavaScript tools/set_clipboard_html.js "$html" 2>/dev/null; then
     pbcopy < "$html"
@@ -89,12 +103,14 @@ to_clipboard() {  # $1 글 폴더, $2 발행본 마크다운 파일, $3 과거 �
   if grep -q 'class="ba-motion"' "$html"; then
     echo "[도식] 본문에 포함했습니다. 반복 재생을 쓰려면 스킨 CSS에 tools/tistory-motion.css 내용을 한 번 추가하세요."
   fi
-  rm -f "$html"
-  if [ -n "${3:-}" ]; then
-    .venv/bin/python tools/render_post.py --preview < "$2" > "$3"
-  else
-    .venv/bin/python tools/render_post.py --preview --post-dir "$1" < "$2" > "$1/preview.html"
+  if grep -q 'src="data:image/png;base64,' "$html"; then
+    echo "[이미지] PNG를 본문에 포함했습니다. 티스토리 임시저장 후 그림이 표시되는지 확인하세요."
   fi
+  if grep -Eq '\[이미지 [0-9]+ 자리\]' "$html"; then
+    echo "[이미지] 다음 위치의 PNG가 없거나 최신이 아닙니다. $(grep -Eo '\[이미지 [0-9]+ 자리\]' "$html" | sort -u | tr '\n' ' ')" >&2
+  fi
+  rm -f "$html"
+  .venv/bin/python tools/render_post.py --preview "$@" < "$source_md" > "$preview_path"
 }
 
 show_publish_info() {
@@ -159,7 +175,7 @@ copy_current() {
   tmp=$(mktemp)
   render "$dir" > "$tmp"
   last=$(last_version "$dir")
-  if [ -n "$last" ] && cmp -s "$tmp" "$dir/versions/v$last.md"; then
+  if [ -n "$last" ] && matches_version "$dir" "$tmp" "$last"; then
     ver=$last
     note="v$last 이후 수정 없음, 버전 유지"
   else
@@ -172,16 +188,12 @@ copy_current() {
   echo "복사함: $(title_of "$dir") v$ver ($note)"
   pending=$(grep -n '확인 필요' "$dir/post.md" | cut -d: -f1 | tr '\n' ' ' || true)
   if [ -n "$pending" ]; then echo "[주의] 확인 필요 표시가 남은 줄: $pending" >&2; fi
-  images=$(grep -c '^\[\[이미지' "$dir/post.md" || true)
-  if [ "$images" -gt 0 ]; then
-    echo "[이미지] ${images}개 필요. 파일: $dir/images/ · 위치/캡션: $dir/images.md → 티스토리에서 '[이미지 N 자리]'를 업로드한 이미지로 교체"
-  fi
   show_publish_info "$dir"
 }
 
 copy_version() {
   version_preview="$1/versions/v$2-preview.html"
-  to_clipboard "$1" "$1/versions/v$2.md" "$version_preview"
+  to_clipboard "$1" "$1/versions/v$2.md" "$version_preview" "$2"
   echo "복사함: $(title_of "$1") v$2 ($(version_date "$1" "$2")에 저장된 버전)"
   show_publish_info "$1" "$version_preview"
 }
@@ -214,7 +226,7 @@ menu() {
   last=$(last_version "$dir")
   tmp=$(mktemp)
   render "$dir" > "$tmp"
-  if cmp -s "$tmp" "$dir/versions/v$last.md"; then
+  if matches_version "$dir" "$tmp" "$last"; then
     current="현재 글 (v$last 이후 수정 없음)"
   else
     current="현재 글 (수정됨 → v$((last + 1))로 저장)"
@@ -254,6 +266,30 @@ handle() {
     menu "$1"
   fi
 }
+
+# 새 글은 메뉴를 열지 않고 HTML 소스 한 덩어리를 복사한다.
+if [ "${1:-}" = "--ready" ]; then
+  [ "$#" -eq 2 ] || die "사용법: sh copy-post --ready posts/<글 폴더>"
+  dir=$(find_post "$2")
+  [ -n "$dir" ] && [ -s "$dir/post.md" ] || die "글을 찾을 수 없습니다."
+  tmp=$(mktemp)
+  output=$(mktemp "$dir/.publish-XXXXXX")
+  trap 'rm -f "$tmp" "$output"' EXIT
+  render "$dir" > "$tmp"
+  .venv/bin/python tools/render_post.py --standalone < "$tmp" > "$output"
+  mv "$output" "$dir/publish.html"
+  .venv/bin/python tools/render_post.py --standalone --preview < "$tmp" > "$dir/preview.html"
+  if ! pbcopy < "$dir/publish.html"; then
+    die "클립보드에 접근할 수 없습니다. 완성된 HTML: $dir/publish.html"
+  fi
+  last=$(last_version "$dir")
+  if [ -z "$last" ] || ! matches_version "$dir" "$tmp" "$last"; then
+    save_version "$dir" "$tmp" "$(( ${last:-0} + 1 ))"
+  fi
+  echo "본문과 도식을 복사했습니다. 티스토리 HTML 모드에 한 번 붙여넣으세요."
+  show_publish_info "$dir"
+  exit 0
+fi
 
 # 인자 없이 실행했는데 최근 글도 이미 복사했다면 새로 만든 글이 없다는 뜻
 intro=""
