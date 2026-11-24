@@ -58,7 +58,7 @@ save_version() {  # $1 글 폴더, $2 발행본 파일, $3 버전 번호
   printf 'v%s\t%s\n' "$3" "$(date '+%Y-%m-%d %H:%M')" >> "$1/versions/log.tsv"
   name=$(basename "$1")
   ensure_posts_repo
-  git -C posts add "$name"
+  git -C posts add "$name" ':(exclude,glob)**/*preview.html'
   git -C posts commit -q -m "copy: $name v$3" -- "$name"
   # posts 저장소에 원격(백업용 비공개 리포 등)을 직접 연결해 둔 경우에만 푸시한다
   if [ -n "$(git -C posts remote)" ]; then
@@ -77,24 +77,32 @@ ensure_posts_repo() {
 }
 
 # 발행본(마크다운)을 티스토리 HTML 모드용 HTML로 바꿔 클립보드에 넣고, 미리보기 페이지도 만든다
-to_clipboard() {  # $1 글 폴더, $2 발행본 마크다운 파일
+to_clipboard() {  # $1 글 폴더, $2 발행본 마크다운 파일, $3 과거 버전 미리보기 경로(선택)
   [ -x .venv/bin/python ] || die ".venv가 없음. README의 설치 단계를 먼저 실행"
   html=$(mktemp)
   .venv/bin/python tools/render_post.py < "$2" > "$html"
-  # 서식(HTML)과 소스(텍스트)를 함께 넣어 기본모드·HTML 모드 어디에 붙여넣어도 되게 한다
+  # 티스토리 HTML 모드에서 붙여넣을 소스를 텍스트 형식으로 함께 넣는다
   if ! osascript -l JavaScript tools/set_clipboard_html.js "$html" 2>/dev/null; then
     pbcopy < "$html"
-    echo "[알림] 서식 복사 실패, HTML 소스만 복사함 → 반드시 HTML 모드에 붙여넣기" >&2
+    echo "[알림] HTML 소스를 텍스트로 복사했습니다. 티스토리 HTML 모드에 붙여넣으세요." >&2
+  fi
+  if grep -q 'class="ba-motion"' "$html"; then
+    echo "[도식] 본문에 포함했습니다. 반복 재생을 쓰려면 스킨 CSS에 tools/tistory-motion.css 내용을 한 번 추가하세요."
   fi
   rm -f "$html"
-  .venv/bin/python tools/render_post.py --preview < "$2" > "$1/preview.html"
+  if [ -n "${3:-}" ]; then
+    .venv/bin/python tools/render_post.py --preview < "$2" > "$3"
+  else
+    .venv/bin/python tools/render_post.py --preview --post-dir "$1" < "$2" > "$1/preview.html"
+  fi
 }
 
 show_publish_info() {
   echo
   echo "글쓰기: https://moonesok.tistory.com/manage/newpost"
-  echo "  → 기본모드·HTML 모드 어디에 붙여넣어도 같은 모양. 마크다운 모드는 사용하지 않음"
-  echo "미리보기: open $1/preview.html"
+  echo "  → 글쓰기 상단의 기본모드 메뉴에서 HTML을 선택하고 본문에 붙여넣으세요 (Cmd + V)."
+  echo "  → 저장 후 미리보기에서 표와 구분선을 확인하세요."
+  echo "미리보기: open ${2:-$1/preview.html}"
   if [ -f "$1/publish.md" ]; then sed '1d' "$1/publish.md"; fi
 }
 
@@ -102,7 +110,7 @@ show_publish_info() {
 commit_fix() {  # $1 글 폴더, $2 설명
   ensure_posts_repo
   name=$(basename "$1")
-  git -C posts add "$name"
+  git -C posts add "$name" ':(exclude,glob)**/*preview.html'
   git -C posts commit -q -m "fix: $name $2" -- "$name" 2>/dev/null || true
 }
 
@@ -166,15 +174,16 @@ copy_current() {
   if [ -n "$pending" ]; then echo "[주의] 확인 필요 표시가 남은 줄: $pending" >&2; fi
   images=$(grep -c '^\[\[이미지' "$dir/post.md" || true)
   if [ "$images" -gt 0 ]; then
-    echo "[이미지] ${images}개 필요. 파일: $dir/images/ · 위치/캡션: $dir/images.md → 티스토리 업로드 후 붙여넣은 글의 '🖼 이미지 N 자리' 상자에 넣고 상자는 지우기"
+    echo "[이미지] ${images}개 필요. 파일: $dir/images/ · 위치/캡션: $dir/images.md → 티스토리에서 '[이미지 N 자리]'를 업로드한 이미지로 교체"
   fi
   show_publish_info "$dir"
 }
 
 copy_version() {
-  to_clipboard "$1" "$1/versions/v$2.md"
+  version_preview="$1/versions/v$2-preview.html"
+  to_clipboard "$1" "$1/versions/v$2.md" "$version_preview"
   echo "복사함: $(title_of "$1") v$2 ($(version_date "$1" "$2")에 저장된 버전)"
-  show_publish_info "$1"
+  show_publish_info "$1" "$version_preview"
 }
 
 ask() {

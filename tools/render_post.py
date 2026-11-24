@@ -12,10 +12,11 @@
 
 부품 문법 (post.md 안에서 사용):
   :::summary [라벨]      한눈에 보기 상자. 첫 줄 = 핵심 한 문장, "- " = 체크 항목, "? " = 이 글에서 답할 질문
-  :::takeaway [라벨]     한 줄 정리 (가운데 큰따옴표 인용). ==구절== 은 형광펜
+  :::takeaway [라벨]     한 줄 정리. ==구절== 은 형광펜
   :::tip / :::warn / :::term [라벨]   팁·주의·용어 상자
   :::quote 화자          발언 인용 (세로선)
   :::steps               "제목 | 설명" 줄마다 번호 단계
+  :::motion [chart-list]  전후를 설명하는 "이름 | 내용" 두 줄. 스킨 CSS로 반복 재생
   :::checklist [라벨]    "- " 줄마다 체크 항목
   :::                    부품 끝
   ## Q1. 질문           소제목 앞에 파란 Q1.
@@ -24,10 +25,13 @@
 사용법:
     render_post.py < post.md > post.html
     render_post.py --preview < post.md > preview.html   실제 티스토리 CSS를 입힌 미리보기 페이지
+    render_post.py --preview --post-dir <글 폴더> < post.md > preview.html   같은 폴더의 PNG 표시
 """
+import argparse
 import html as htmllib
 import re
 import sys
+from pathlib import Path
 
 import markdown
 
@@ -38,15 +42,12 @@ BODY = "#263244"
 SUB = "#475569"
 CAPTION = "#64748b"
 HIGHLIGHT = "#dce8f6"
-CHIP_BG = "#e9f0fa"
-TABLE_HEADER = INK
-TABLE_FIRST_COLUMN = CHIP_BG
-TABLE_STRIPE = "#f4f7fb"
+TABLE_HEADER_BG = "#e9f0fa"
 
 ALLOWED_STYLES = {"color", "background-color", "text-align", "list-style-type", "border-collapse", "width"}
-TABLE_STYLE = "style15"
+TABLE_STYLE = "style8"
 NUMBERS = "①②③④⑤⑥⑦⑧⑨⑩"
-NOTES = {"tip": ("💡 TIP", ACCENT), "warn": ("⚠️ 주의", INK), "term": ("ℹ️ 용어", SUB)}
+NOTES = {"tip": "팁", "warn": "주의", "term": "용어"}
 
 TISTORY_CSS = [
     "https://edge.daumcdn.net/tistory/tistory-admin/userblog/userblog-d688a284249d4b0687a7ec6021c32913af1f92cf/static/style/content.css",
@@ -65,10 +66,6 @@ SPACER = P("&nbsp;", 16)
 def color(text, fg, bg=None):
     bg_css = f"background-color: {bg};" if bg else ""
     return f'<span style="color: {fg};{bg_css}">{text}</span>'
-
-
-def chip(text, fg=ACCENT, bg=CHIP_BG):
-    return color(f"<b>&nbsp;{htmllib.escape(text)}&nbsp;</b>", fg, bg)
 
 
 def inline(text):
@@ -92,7 +89,9 @@ def summary(label, lines):
     paras = [P(color(f"<b>{htmllib.escape(label or '한눈에 보기')}</b>", ACCENT), 18)]
     if title:
         paras += [f'<h3 data-ke-size="size23">{color(f"<b>{inline(title)}</b>", INK)}</h3>']
-    paras += [P(f'{color("<b>✓</b>", ACCENT)}&nbsp; {color(inline(c), BODY)}') for c in checks]
+    if checks:
+        items = "".join(f"<li>{P(color(inline(c), BODY))}</li>" for c in checks)
+        paras.append(f'<ul data-ke-list-type="disc">{items}</ul>')
     if questions:
         paras += [SPACER, P(color("<b>이 글에서 답할 질문</b>", SUB), 18)]
         paras += [P(color(f"Q{i + 1}. {inline(q)}", SUB), 18) for i, q in enumerate(questions)]
@@ -100,15 +99,12 @@ def summary(label, lines):
 
 
 def takeaway(label, lines):
-    return quote_box("style1", [
-        P(color(f"<b>{htmllib.escape(label or '한 줄 정리')}</b>", ACCENT), 18),
-        P(color(f"<b>{inline(' '.join(lines))}</b>", INK), 18),
-    ])
+    heading = P(color(htmllib.escape(label), SUB), 16) if label else ""
+    return heading + P(color(f"<b>{inline(' '.join(lines))}</b>", INK))
 
 
 def note(kind, label, lines):
-    default, fg = NOTES[kind]
-    return quote_box("style3", [P(color(f"<b>{htmllib.escape(label or default)}</b>", fg), 18)]
+    return quote_box("style3", [P(color(f"<b>{htmllib.escape(label or NOTES[kind])}</b>", INK))]
                      + [P(color(inline(l), BODY)) for l in lines])
 
 
@@ -130,22 +126,59 @@ def steps(_label, lines):
     return "".join(rows)
 
 
+def motion(variant, lines):
+    rows = []
+    for line in lines:
+        label, sep, detail = line.partition("|")
+        content = f"<b>{htmllib.escape(label.strip())}</b> · {htmllib.escape(detail.strip())}" if sep else htmllib.escape(line)
+        rows.append(P(content))
+    sketch = ""
+    if variant == "chart-list":
+        sketch = '<div aria-hidden="true" class="ba-motion-chart"><i></i><i></i><i></i></div>'
+    return '<div class="ba-motion">' + sketch + "".join(rows) + "</div>"
+
+
 def checklist(label, lines):
     head = [P(color(f"<b>{htmllib.escape(label)}</b>", SUB), 18)] if label else []
     return "".join(head + [P(f'{color("<b>☐</b>", ACCENT)}&nbsp; {inline(l[2:])}') for l in lines if l.startswith("- ")])
 
 
 COMPONENTS = {
-    "summary": summary, "takeaway": takeaway, "quote": quote, "steps": steps, "checklist": checklist,
+    "summary": summary, "takeaway": takeaway, "quote": quote, "steps": steps, "checklist": checklist, "motion": motion,
     "tip": lambda a, l: note("tip", a, l), "warn": lambda a, l: note("warn", a, l), "term": lambda a, l: note("term", a, l),
 }
 
 
 def image_slot(n):
-    return quote_box("style3", [P(color(f"🖼 이미지 {n} 자리 — images.md의 이미지 {n}을 여기에 넣고 이 상자는 지운다", CAPTION), 14)])
+    return P(color(f"[이미지 {n} 자리]", CAPTION), 16)
 
 
-def extract_components(md_text):
+def preview_image_slots(post_dir):
+    """preview.html 옆의 최신 PNG만 읽고, 발행용 렌더링에는 전달하지 않는다."""
+    spec = post_dir / "images.md"
+    sections = {}
+    if spec.is_file():
+        text = spec.read_text(encoding="utf-8")
+        for block in re.split(r"(?=^## 이미지 \d+)", text, flags=re.M):
+            head = re.match(r"## 이미지 (\d+)[ \t]*[:：]?[ \t]*([^\n]*)", block)
+            if head:
+                fields = dict(re.findall(r"^- (캡션|대체 텍스트):[ \t]*(.+)$", block, flags=re.M))
+                sections[head[1]] = (head[2].strip(), fields)
+    slots = {}
+    for n in ("1", "2"):
+        png = post_dir / "images" / f"image-{n}.png"
+        svg = png.with_suffix(".svg")
+        if not png.is_file() or (svg.is_file() and png.stat().st_mtime_ns < svg.stat().st_mtime_ns):
+            continue
+        title, fields = sections.get(n, ("", {}))
+        alt = htmllib.escape(fields.get("대체 텍스트") or title or f"이미지 {n}")
+        caption = htmllib.escape(fields.get("캡션", ""))
+        figcaption = f"<figcaption>{caption}</figcaption>" if caption else ""
+        slots[n] = f'<figure class="post-preview-figure"><img src="images/{png.name}" alt="{alt}">{figcaption}</figure>'
+    return slots
+
+
+def extract_components(md_text, image_slots):
     """:::부품 블록을 HTML로 만들어 자리표시로 바꾼다 (마크다운 변환 뒤에 되돌린다)."""
     stash, out, block = [], [], None
     for line in md_text.splitlines():
@@ -162,7 +195,8 @@ def extract_components(md_text):
         else:
             img = re.match(r"^\s*\[\[이미지\s*(\d+)\]\]\s*$", line)
             if img:
-                stash.append(image_slot(img.group(1)))
+                n = img.group(1)
+                stash.append(image_slots.get(n) or image_slot(n))
                 out += ["", f"@@C{len(stash) - 1}@@", ""]
             else:
                 out.append(line)
@@ -170,21 +204,30 @@ def extract_components(md_text):
 
 
 def tistory_table(match):
-    """마크다운 표를 티스토리 표 서식으로. 머리줄도 일반 행으로 두고 굵게, 첫 열도 굵게."""
+    """티스토리 기본 표에 열·행 제목을 구분해 읽는 순서를 명시한다."""
     rows = re.findall(r"<tr>(.*?)</tr>", match.group(0), flags=re.S)
     out = []
     for r, row in enumerate(rows):
         cells = re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", row, flags=re.S)
-        tds = []
+        rendered_cells = []
         for i, c in enumerate(cells):
-            bg = TABLE_HEADER if r == 0 else TABLE_FIRST_COLUMN if i == 0 else TABLE_STRIPE if r % 2 else "#ffffff"
-            fg = "#ffffff" if r == 0 else ACCENT if i == 0 else BODY
-            text = f"<b>{c}</b>" if (r == 0 or i == 0) and c else c
-            tds.append(f'<td style="background-color: {bg};">{P(color(text, fg), 18)}</td>')
-        out.append(f"<tr>{''.join(tds)}</tr>")
+            if r == 0:
+                text = P(color(c, INK))
+                # 설명이 긴 2열 표에서도 첫 열 항목명이 한 글자씩 쪼개지지 않게 한다.
+                width = " width: 4em;" if len(cells) == 2 and i == 0 else ""
+                rendered_cells.append(f'<th scope="col" style="text-align: left; background-color: {TABLE_HEADER_BG};{width}">{text}</th>')
+            elif i == 0:
+                text = P(color(c, ACCENT))
+                rendered_cells.append(f'<th scope="row" style="text-align: left;">{text}</th>')
+            else:
+                rendered_cells.append(f"<td>{P(color(c, BODY))}</td>")
+        out.append(f"<tr>{''.join(rendered_cells)}</tr>")
+    if not out:
+        return match.group(0)
+    # style8의 첫 행 서식이 첫 데이터 행에 걸리지 않게 열 제목도 같은 행 그룹에 둔다.
     return (
-        f'<table style="border-collapse: collapse; width: 100%;" data-ke-align="alignLeft" data-ke-style="{TABLE_STYLE}">'
-        f"<tbody>{''.join(out)}</tbody></table>"
+        f'<table style="border-collapse: collapse; width: 100%;" border="1" rules="rows" '
+        f'data-ke-align="alignLeft" data-ke-style="{TABLE_STYLE}"><tbody>{"".join(out)}</tbody></table>'
     )
 
 
@@ -243,8 +286,8 @@ def insert_spacers(html):
     return "\n".join(out)
 
 
-def render(md_text):
-    md_text, stash = extract_components(md_text)
+def render(md_text, image_slots=None):
+    md_text, stash = extract_components(md_text, image_slots or {})
     html = markdown.markdown(md_text, extensions=["tables", "fenced_code", "sane_lists"])
     html = style_blocks(html)
     html = insert_spacers(re.sub(r'<p data-ke-size="size18">@@C(\d+)@@</p>', r"@@C\1@@", html))
@@ -254,12 +297,21 @@ def render(md_text):
 
 def preview_page(body):
     links = "\n".join(f'<link rel="stylesheet" href="{href}">' for href in TISTORY_CSS)
+    motion_css = ""
+    if 'class="ba-motion"' in body:
+        motion_css = Path(__file__).with_name("tistory-motion.css").read_text(encoding="utf-8")
     return f"""<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>미리보기 (티스토리 스킨 CSS 적용)</title>
 {links}
-<style>body {{ max-width: 760px; margin: 40px auto; padding: 0 20px; background: #fff; }}</style>
+<style>
+{motion_css}
+body {{ max-width: 760px; margin: 40px auto; padding: 0 20px; background: #fff; }}
+#article-view .post-preview-figure {{ margin: 0 0 24px; }}
+#article-view .post-preview-figure img {{ display: block; max-width: 100%; height: auto; }}
+#article-view .post-preview-figure figcaption {{ margin-top: 8px; color: {SUB}; font-size: 16px; line-height: 1.6; text-align: left; }}
+</style>
 </head><body>
 <div class="article-view" id="article-view">
 <div class="tt_article_useless_p_margin contents_style">
@@ -270,8 +322,15 @@ def preview_page(body):
 
 
 def main():
-    body = render(sys.stdin.read())
-    sys.stdout.write(preview_page(body) if "--preview" in sys.argv[1:] else body)
+    parser = argparse.ArgumentParser(description="마크다운을 티스토리 HTML로 바꿉니다.")
+    parser.add_argument("--preview", action="store_true", help="티스토리 스킨 미리보기를 출력합니다.")
+    parser.add_argument("--post-dir", type=Path, help="미리보기와 이미지가 저장되는 글 폴더입니다.")
+    args = parser.parse_args()
+    if args.post_dir and not args.preview:
+        parser.error("--post-dir은 --preview와 함께 사용합니다.")
+    slots = preview_image_slots(args.post_dir) if args.post_dir else {}
+    body = render(sys.stdin.read(), slots)
+    sys.stdout.write(preview_page(body) if args.preview else body)
 
 
 if __name__ == "__main__":

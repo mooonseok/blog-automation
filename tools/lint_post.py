@@ -131,6 +131,7 @@ def lint(post_path):
     prose, all_lines, paragraphs = [], [], []   # prose: 문단·상자 글 (E-2·C-8용), all_lines: 목록·단계까지 전부
 
     in_comp, comp_name, comps, images = False, "", [], []
+    motion_rows = 0
     in_source, body_chars = False, 0
     paragraph, para_start = [], 0
 
@@ -172,12 +173,23 @@ def lint(post_path):
         if not in_comp and start:
             in_comp, comp_name = True, start.group(1)
             comps.append(comp_name)
+            if comp_name == "motion":
+                motion_rows = 0
+                if line not in (":::motion", ":::motion chart-list"):
+                    err(i, "모션 종류는 생략하거나 chart-list로 쓴다")
             flush()
             continue
         if in_comp:
             if line == ":::":
+                if comp_name == "motion" and motion_rows != 2:
+                    err(i, "모션에는 전후 상태를 두 줄로 쓴다")
                 in_comp = False
             elif no_comment:
+                if comp_name == "motion":
+                    motion_rows += 1
+                    fields = no_comment.split("|")
+                    if len(fields) != 2 or not all(field.strip() for field in fields):
+                        err(i, "모션의 각 줄은 '이름 | 설명'으로 쓴다")
                 body_chars += len(plain(no_comment))
                 text = plain(no_comment.split("|")[-1] if comp_name == "steps" else no_comment)
                 all_lines.append((i, text))
