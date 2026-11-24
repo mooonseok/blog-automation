@@ -234,13 +234,13 @@ def tistory_table(match):
         rendered_cells = []
         for i, c in enumerate(cells):
             if r == 0:
-                text = P(color(c, INK))
+                text = P(color(f"<b>{c}</b>", INK))
                 # 설명이 긴 2열 표에서도 첫 열 항목명이 한 글자씩 쪼개지지 않게 한다.
                 width = " width: 4em;" if len(cells) == 2 and i == 0 else ""
-                rendered_cells.append(f'<th scope="col" style="text-align: left; background-color: {TABLE_HEADER_BG};{width}">{text}</th>')
+                rendered_cells.append(f'<td role="columnheader" style="text-align: left; background-color: {TABLE_HEADER_BG};{width}">{text}</td>')
             elif i == 0:
-                text = P(color(c, ACCENT))
-                rendered_cells.append(f'<th scope="row" style="text-align: left;">{text}</th>')
+                text = P(color(f"<b>{c}</b>", ACCENT))
+                rendered_cells.append(f'<td role="rowheader" style="text-align: left;">{text}</td>')
             else:
                 rendered_cells.append(f"<td>{P(color(c, BODY))}</td>")
         out.append(f"<tr>{''.join(rendered_cells)}</tr>")
@@ -317,6 +317,16 @@ def render(md_text, image_slots=None):
     return sanitize(smart_typography(html))
 
 
+def standalone_body(md):
+    """자동 복사용 본문을 검사한다. 예전 글의 원본 렌더링은 별도로 지원한다."""
+    md = re.sub(r"<!--.*?-->", "", md, flags=re.S)
+    body = render(md)
+    if re.search(r'<(?:img|picture|svg|iframe|object|video|canvas|style|script|link)\b|'
+                 r'class="ba-motion"|\[이미지 \d+ 자리\]', body, re.I):
+        raise ValueError("그림·모션을 본문 안의 단계(:::steps), 비교표 또는 굵은 소제목과 설명으로 바꿉니다.")
+    return body
+
+
 def preview_page(body):
     links = "\n".join(f'<link rel="stylesheet" href="{href}">' for href in TISTORY_CSS)
     motion_css = ""
@@ -348,13 +358,17 @@ def main():
     parser.add_argument("--preview", action="store_true", help="티스토리 스킨 미리보기를 출력합니다.")
     parser.add_argument("--post-dir", type=Path, help="미리보기와 이미지가 저장되는 글 폴더입니다.")
     parser.add_argument("--version", type=int, help="당시 복사 커밋의 이미지와 캡션을 사용합니다.")
+    parser.add_argument("--standalone", action="store_true", help="추가 첨부 없이 붙여넣을 본문 HTML을 출력합니다.")
     args = parser.parse_args()
     if args.version is not None and not args.post_dir:
         parser.error("--version에는 --post-dir이 필요합니다.")
     md = sys.stdin.read()
     numbers = set(re.findall(r"^\s*\[\[이미지\s*(\d+)\]\]\s*$", md, re.M))
     slots = image_slots_for_post(args.post_dir, numbers, args.version) if args.post_dir and numbers else {}
-    body = render(md, slots)
+    try:
+        body = standalone_body(md) if args.standalone else render(md, slots)
+    except ValueError as exc:
+        parser.exit(1, f"{exc}\n")
     sys.stdout.write(preview_page(body) if args.preview else body)
 
 
