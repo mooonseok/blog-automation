@@ -9,6 +9,7 @@
 .ba-motion > p + p { margin-top: .65em; }
 .ba-motion > p > b { color: #22456b; }
 .ba-motion-chart { position: relative; width: 96px; height: 68px; }
+.ba-motion-chart .ba-chart-static { display: none; }
 .ba-motion-chart i {
   display: block;
   position: absolute;

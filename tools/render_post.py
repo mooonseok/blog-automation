@@ -20,7 +20,7 @@
   :::checklist [라벨]    "- " 줄마다 체크 항목
   :::                    부품 끝
   ## Q1. 질문           소제목 앞에 파란 Q1.
-  [[이미지 N]]           이미지 자리 표시 (붙여넣은 뒤 실제 이미지로 바꾼다)
+  [[이미지 N]]           글 폴더의 PNG를 본문에 포함 (파일이 없으면 자리 표시)
 
 사용법:
     render_post.py < post.md > post.html
@@ -28,8 +28,10 @@
     render_post.py --preview --post-dir <글 폴더> < post.md > preview.html   같은 폴더의 PNG 표시
 """
 import argparse
+import base64
 import html as htmllib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -134,7 +136,7 @@ def motion(variant, lines):
         rows.append(P(content))
     sketch = ""
     if variant == "chart-list":
-        sketch = '<div aria-hidden="true" class="ba-motion-chart"><i></i><i></i><i></i></div>'
+        sketch = '<div aria-hidden="true" class="ba-motion-chart"><i></i><i></i><i></i><span class="ba-chart-static">▂▆▄ → ☰</span></div>'
     return '<div class="ba-motion">' + sketch + "".join(rows) + "</div>"
 
 
@@ -153,28 +155,48 @@ def image_slot(n):
     return P(color(f"[이미지 {n} 자리]", CAPTION), 16)
 
 
-def preview_image_slots(post_dir):
-    """preview.html 옆의 최신 PNG만 읽고, 발행용 렌더링에는 전달하지 않는다."""
-    spec = post_dir / "images.md"
+def image_slots_for_post(post_dir, numbers, version=None):
+    """현재 파일 또는 해당 복사 버전의 파일로 이동 가능한 HTML을 만든다."""
+    commit = None
+    if version is not None:
+        result = subprocess.run(
+            ["git", "-C", post_dir, "log", "-1", "--format=%H", "--diff-filter=A",
+             "--", f"versions/v{version}.md"], capture_output=True, text=True)
+        commit = result.stdout.strip()
+        if not commit:
+            return {}
+
+    def read_asset(name):
+        if commit:
+            blob = subprocess.run(["git", "-C", post_dir, "show", f"{commit}:./{name}"],
+                                  capture_output=True)
+            return blob.stdout if blob.returncode == 0 else b""
+        path = post_dir / name
+        return path.read_bytes() if path.is_file() else b""
+
     sections = {}
-    if spec.is_file():
-        text = spec.read_text(encoding="utf-8")
+    text = read_asset("images.md").decode("utf-8")
+    if text:
         for block in re.split(r"(?=^## 이미지 \d+)", text, flags=re.M):
             head = re.match(r"## 이미지 (\d+)[ \t]*[:：]?[ \t]*([^\n]*)", block)
             if head:
                 fields = dict(re.findall(r"^- (캡션|대체 텍스트):[ \t]*(.+)$", block, flags=re.M))
                 sections[head[1]] = (head[2].strip(), fields)
     slots = {}
-    for n in ("1", "2"):
+    for n in numbers:
         png = post_dir / "images" / f"image-{n}.png"
         svg = png.with_suffix(".svg")
-        if not png.is_file() or (svg.is_file() and png.stat().st_mtime_ns < svg.stat().st_mtime_ns):
+        if not commit and png.is_file() and svg.is_file() and png.stat().st_mtime_ns < svg.stat().st_mtime_ns:
+            continue
+        data = read_asset(f"images/{png.name}")
+        if not data.startswith(b"\x89PNG\r\n\x1a\n"):
             continue
         title, fields = sections.get(n, ("", {}))
         alt = htmllib.escape(fields.get("대체 텍스트") or title or f"이미지 {n}")
         caption = htmllib.escape(fields.get("캡션", ""))
         figcaption = f"<figcaption>{caption}</figcaption>" if caption else ""
-        slots[n] = f'<figure class="post-preview-figure"><img src="images/{png.name}" alt="{alt}">{figcaption}</figure>'
+        encoded = base64.b64encode(data).decode("ascii")
+        slots[n] = f'<figure class="post-preview-figure"><img style="width: 100%;" src="data:image/png;base64,{encoded}" alt="{alt}">{figcaption}</figure>'
     return slots
 
 
@@ -325,11 +347,14 @@ def main():
     parser = argparse.ArgumentParser(description="마크다운을 티스토리 HTML로 바꿉니다.")
     parser.add_argument("--preview", action="store_true", help="티스토리 스킨 미리보기를 출력합니다.")
     parser.add_argument("--post-dir", type=Path, help="미리보기와 이미지가 저장되는 글 폴더입니다.")
+    parser.add_argument("--version", type=int, help="당시 복사 커밋의 이미지와 캡션을 사용합니다.")
     args = parser.parse_args()
-    if args.post_dir and not args.preview:
-        parser.error("--post-dir은 --preview와 함께 사용합니다.")
-    slots = preview_image_slots(args.post_dir) if args.post_dir else {}
-    body = render(sys.stdin.read(), slots)
+    if args.version is not None and not args.post_dir:
+        parser.error("--version에는 --post-dir이 필요합니다.")
+    md = sys.stdin.read()
+    numbers = set(re.findall(r"^\s*\[\[이미지\s*(\d+)\]\]\s*$", md, re.M))
+    slots = image_slots_for_post(args.post_dir, numbers, args.version) if args.post_dir and numbers else {}
+    body = render(md, slots)
     sys.stdout.write(preview_page(body) if args.preview else body)
 
 

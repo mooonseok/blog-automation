@@ -127,7 +127,7 @@ elapsed=$(( $(date +%s) - started ))
 echo
 echo "완료: $dir  (자동 검사 $status, $((elapsed / 60))분 $((elapsed % 60))초)"
 grep -q "결과: PASS" "$dir/reader-test.md" && echo "독자 테스트: 통과" || echo "독자 테스트: 실패 → $dir/reader-test.md 확인"
-if [ -s "$dir/images.md" ]; then echo "이미지: $dir/images/ 파일과 $dir/images.md 확인 후 티스토리에 업로드"; fi
+if [ -s "$dir/images.md" ]; then echo "이미지: 준비된 PNG는 sh copy-post가 본문에 포함합니다."; fi
 echo "다음 할 일"
 if .venv/bin/python tools/render_post.py --preview --post-dir "$dir" < "$dir/post.md" > "$dir/preview.html"; then
   echo "  1. 미리보기: open $dir/preview.html · 본문 수정: $dir/post.md"
