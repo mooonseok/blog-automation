@@ -136,7 +136,7 @@ def motion(variant, lines):
         rows.append(P(content))
     sketch = ""
     if variant == "chart-list":
-        sketch = '<div aria-hidden="true" class="ba-motion-chart"><i></i><i></i><i></i><span class="ba-chart-static">▂▆▄ → ☰</span></div>'
+        sketch = '<div aria-hidden="true" class="ba-motion-chart"><i></i><i></i><i></i></div>'
     return '<div class="ba-motion">' + sketch + "".join(rows) + "</div>"
 
 
